@@ -1367,10 +1367,15 @@
   inset: 0;
   background:
     linear-gradient(180deg, #02060ab8 0%, #06101bc9 38%, #020509f2 100%),
-    url("/room/tavern-reference-1200.webp") center top / cover no-repeat;
+    url("/room/tavern-reference-ru-1200.webp") center top / cover no-repeat;
   content: "";
   filter: saturate(0.72) contrast(1.08);
   pointer-events: none;
+}
+.quest-app.lang-en::before {
+  background:
+    linear-gradient(180deg, #02060ab8 0%, #06101bc9 38%, #020509f2 100%),
+    url("/room/tavern-reference-en-1200.webp") center top / cover no-repeat;
 }
 .quest-app::after {
   position: fixed;
