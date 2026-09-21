@@ -1,5 +1,5 @@
 import { getSql } from "@/lib/db";
-import { buildDemoRoom, tickDemoRoom } from "./demo";
+import { buildDemoRoom, prepareDemoJoin, tickDemoRoom } from "./demo";
 import {
   DEMO_CODE,
   applyAction,
@@ -113,6 +113,9 @@ export async function handlePokerAction(
     const { room, version } = loaded;
     const result = applyAction(room, action);
     if (!result.ok) return { ok: false, error: result.error };
+    if (action.code === DEMO_CODE && action.type === "join") {
+      prepareDemoJoin(result.room, result.you);
+    }
     const demoChanged = action.code === DEMO_CODE ? tickDemoRoom(result.room) : false;
     if (action.type === "sync") {
       const pruned = prunePlayers(result.room);

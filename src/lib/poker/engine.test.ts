@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { buildDemoRoom, prepareDemoJoin } from "./demo.ts";
 import { applyAction, createRoom, snapshot } from "./engine.ts";
 import type { StoredPlayer } from "./types.ts";
 
@@ -8,6 +9,22 @@ function stored(id: string, token: string, time: number): StoredPlayer {
 }
 
 describe("poker engine", () => {
+  it("opens the demo as an interactive round led by the visitor", () => {
+    const room = buildDemoRoom();
+    room.revealed = true;
+    room.hostId = "botolga";
+    room.players.push(stored("guest01", "guest-token", Date.now()));
+    room.votes.guest01 = "xl";
+
+    prepareDemoJoin(room, "guest01");
+
+    assert.equal(room.revealed, false);
+    assert.equal(room.hostId, "guest01");
+    assert.equal(room.votes.guest01, undefined);
+    assert.equal(room.task?.id, "t-demo-now");
+    assert.equal(room.votes.botolga, "s");
+  });
+
   it("asks the store to persist a throttled heartbeat", () => {
     const originalNow = Date.now;
     try {
