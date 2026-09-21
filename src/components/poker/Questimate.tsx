@@ -1072,16 +1072,21 @@ function TaskCard({
   const clamp = long && collapsed;
   return (
     <article className="quest-card task-card">
-      <span className="eyebrow">{t.newTask}</span>
-      <h1>{task.title}</h1>
-      {task.description ? (
-        <p className={cn("task-copy", clamp && "line-clamp-3")}>{task.description}</p>
-      ) : null}
-      {long ? (
-        <button type="button" className="text-link" onClick={onToggle}>
-          {clamp ? t.expand : t.collapse}
-        </button>
-      ) : null}
+      <div className="task-scroll-copy">
+        <span className="eyebrow">{t.newTask}</span>
+        <h1>{task.title}</h1>
+        {task.description ? (
+          <p className={cn("task-copy", clamp && "line-clamp-3")}>{task.description}</p>
+        ) : null}
+        {long ? (
+          <button type="button" className="text-link" onClick={onToggle}>
+            {clamp ? t.expand : t.collapse}
+          </button>
+        ) : null}
+      </div>
+      <span className="task-seal" aria-hidden="true">
+        Q
+      </span>
     </article>
   );
 }
