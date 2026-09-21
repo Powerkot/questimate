@@ -55,6 +55,8 @@ export type StoredPlayer = {
   lastSeen: number;
   bot?: boolean;
   joinedAt?: number;
+  leftAt?: number;
+  lastLeaveNoticeAt?: number;
 };
 
 export type RoomPassword = {

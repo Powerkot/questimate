@@ -308,7 +308,7 @@ export function tickDemoRoom(room: StoredRoom): boolean {
     }
     changed = true;
   }
-  if (!room.players.some((p) => p.id === room.hostId)) {
+  if (!room.players.some((p) => p.id === room.hostId && !p.leftAt)) {
     room.hostId = "botolga";
     changed = true;
   }
@@ -317,7 +317,7 @@ export function tickDemoRoom(room: StoredRoom): boolean {
   if (!maxim) return changed;
   const t = now();
   for (const p of room.players) {
-    if (p.bot) continue;
+    if (p.bot || p.leftAt) continue;
     const start = p.joinedAt ?? p.lastSeen;
     if (t - start < DEMO_SNOW_AFTER_MS) continue;
     if (room.demoHit[p.id]) continue;

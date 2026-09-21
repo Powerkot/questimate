@@ -102,6 +102,71 @@ describe("poker engine", () => {
     }
   });
 
+  it("reuses one membership when the same browser repeatedly leaves and changes its name", () => {
+    const originalNow = Date.now;
+    try {
+      let time = 1_000;
+      Date.now = () => time;
+      const room = createRoom("ABCDE", stored("host01", "host-token", time));
+      applyAction(room, {
+        type: "join",
+        playerId: "guest01",
+        token: "guest-token",
+        name: "Guest",
+      });
+
+      for (let index = 0; index < 5; index += 1) {
+        time += 1_000;
+        assert.equal(
+          applyAction(room, { type: "leave", playerId: "guest01", token: "guest-token" }).ok,
+          true,
+        );
+        assert.equal(snapshot(room, "host01").players.length, 1);
+
+        time += 1_000;
+        const joined = applyAction(room, {
+          type: "join",
+          playerId: "guest01",
+          token: "guest-token",
+          name: `Guest ${index}`,
+        });
+        assert.equal(joined.ok && joined.you, "guest01");
+      }
+
+      assert.equal(room.players.length, 2);
+      assert.equal(snapshot(room, "host01").players.length, 2);
+      assert.equal(room.players.find((player) => player.id === "guest01")?.name, "Guest 4");
+      assert.equal(
+        room.chat.filter((entry) => entry.textEn?.includes("leaves the party")).length,
+        1,
+      );
+    } finally {
+      Date.now = originalNow;
+    }
+  });
+
+  it("reuses the browser membership even if its player id is changed", () => {
+    const room = createRoom("ABCDE", stored("host01", "host-token", Date.now()));
+    applyAction(room, {
+      type: "join",
+      playerId: "guest01",
+      token: "guest-token",
+      name: "Guest",
+    });
+    applyAction(room, { type: "leave", playerId: "guest01", token: "guest-token" });
+
+    const joined = applyAction(room, {
+      type: "join",
+      playerId: "changed-id",
+      token: "guest-token",
+      name: "Changed name",
+    });
+
+    assert.equal(joined.ok && joined.you, "guest01");
+    assert.equal(room.players.length, 2);
+    assert.equal(snapshot(room, "host01").players.at(-1)?.name, "Changed name");
+  });
+
   it("keeps a selected character variant stable for the round", () => {
     const room = createRoom("ABCDE", stored("host01", "host-token", Date.now()));
     assert.equal(
