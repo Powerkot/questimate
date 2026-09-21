@@ -6,6 +6,7 @@ import {
   createRoom,
   makeCode,
   makeId,
+  normalizeRoom,
   now,
   prunePlayers,
   snapshot,
@@ -14,8 +15,8 @@ import {
 import type { PokerResult, StoredRoom } from "./types";
 
 function asRoom(raw: unknown): StoredRoom {
-  if (typeof raw === "string") return JSON.parse(raw) as StoredRoom;
-  return raw as StoredRoom;
+  const room = typeof raw === "string" ? (JSON.parse(raw) as StoredRoom) : (raw as StoredRoom);
+  return normalizeRoom(room);
 }
 
 async function load(code: string): Promise<{ room: StoredRoom; version: number } | null> {
@@ -101,7 +102,9 @@ export async function createPokerRoom(input: {
   return { ok: false, error: "invalid" };
 }
 
-export async function handlePokerAction(action: RoomAction & { code: string }): Promise<PokerResult> {
+export async function handlePokerAction(
+  action: RoomAction & { code: string },
+): Promise<PokerResult> {
   await maybeGc();
   if (action.code === DEMO_CODE) await ensureDemoRoom();
   for (let attempt = 0; attempt < 6; attempt++) {
@@ -113,7 +116,7 @@ export async function handlePokerAction(action: RoomAction & { code: string }): 
     const demoChanged = action.code === DEMO_CODE ? tickDemoRoom(result.room) : false;
     if (action.type === "sync") {
       const pruned = prunePlayers(result.room);
-      if (pruned.changed || demoChanged) {
+      if (pruned.changed || demoChanged || result.persist) {
         if (result.room.players.length === 0) {
           await remove(action.code);
           return { ok: false, error: "room_not_found" };

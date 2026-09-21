@@ -1,4 +1,15 @@
-import { Copy, Crown, ScrollText } from "lucide-react";
+import {
+  Check,
+  Copy,
+  Crown,
+  LogOut,
+  MessageCircle,
+  Presentation,
+  ScrollText,
+  Sparkles,
+  Users,
+  WifiOff,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MagicCard, MiniFaces } from "@/components/poker/MagicCard";
 import { Button } from "@/components/ui/button";
@@ -9,7 +20,7 @@ import { DEMO_CODE } from "@/lib/poker/engine";
 import { getOrCreateIdentity, loadLang, loadName, saveLang, saveName } from "@/lib/poker/identity";
 import { I18N, chatText, type Lang } from "@/lib/poker/i18n";
 import { playHit, vibrateHit } from "@/lib/poker/sound";
-import { SIZE_RANK, type CardValue, type PublicPlayer, type Snapshot } from "@/lib/poker/types";
+import { type CardValue, type PublicPlayer, type Snapshot } from "@/lib/poker/types";
 import { APP_NAME } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 
@@ -17,6 +28,8 @@ type Props = {
   roomCode?: string;
   onRoomCode: (code: string | undefined) => void;
 };
+
+type VoteStatus = "idle" | "saving" | "saved" | "failed";
 
 export function Questimate({ roomCode, onRoomCode }: Props) {
   const [lang, setLang] = useState<Lang>("ru");
@@ -27,21 +40,33 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [picked, setPicked] = useState<CardValue | null>(null);
+  const [voteStatus, setVoteStatus] = useState<VoteStatus>("idle");
   const [resultPick, setResultPick] = useState<CardValue | null>(null);
   const [taskCollapsed, setTaskCollapsed] = useState(true);
   const [copied, setCopied] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [menu, setMenu] = useState<{ x: number; y: number; targetId: string } | null>(null);
+  const [sideTab, setSideTab] = useState<"history" | "chat">("chat");
+  const [presentation, setPresentation] = useState(false);
   const identity = useRef<{ playerId: string; token: string } | null>(null);
   const snowSeen = useRef(0);
   const codeRef = useRef<string | undefined>(undefined);
-  const booted = useRef(false);
   const snapKey = useRef("");
-  const actRef = useRef<(data: PokerActionInput, opts?: { keepPicked?: boolean }) => Promise<boolean>>(
-    async () => false,
-  );
+  const actRef = useRef<
+    (data: PokerActionInput, opts?: { keepPicked?: boolean; silent?: boolean }) => Promise<boolean>
+  >(async () => false);
   const t = I18N[lang];
   codeRef.current = state?.code;
+
+  useEffect(() => {
+    identity.current = getOrCreateIdentity();
+    setLang(loadLang());
+    setName(loadName());
+  }, []);
+
+  useEffect(() => {
+    if (!state && roomCode) setCodeInput(roomCode);
+  }, [roomCode, state]);
 
   useEffect(() => {
     document.documentElement.lang = lang;
@@ -53,10 +78,10 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
   }, []);
 
   const applyResult = useCallback(
-    (res: Awaited<ReturnType<typeof pokerActionFn>>, keepPicked = false) => {
+    (res: Awaited<ReturnType<typeof pokerActionFn>>, keepPicked = false, silent = false) => {
       if (!res.ok) {
+        if (!silent) setError(res.error);
         if (res.error === "room_not_found") {
-          setError("room_not_found");
           setState(null);
           setYou(null);
           onRoomCode(undefined);
@@ -69,21 +94,25 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
         snapKey.current = key;
         setState(res.state);
       }
-      setError(null);
+      if (!silent) setError(null);
       if (!keepPicked && (!res.state.task || res.state.revealed)) setPicked(null);
       if (!res.state.revealed) setResultPick(null);
-      if (codeRef.current !== res.state.code) onRoomCode(res.state.code);
+      if (codeRef.current !== res.state.code) {
+        onRoomCode(res.state.code);
+        window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
+      }
       return true;
     },
     [onRoomCode],
   );
 
   const act = useCallback(
-    async (data: PokerActionInput, opts?: { keepPicked?: boolean }) => {
+    async (data: PokerActionInput, opts?: { keepPicked?: boolean; silent?: boolean }) => {
       try {
         const res = await pokerActionFn({ data });
-        return applyResult(res, opts?.keepPicked);
+        return applyResult(res, opts?.keepPicked, opts?.silent);
       } catch {
+        if (!opts?.silent) setError("network");
         return false;
       }
     },
@@ -92,65 +121,20 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
   actRef.current = act;
 
   useEffect(() => {
-    if (booted.current) return;
-    booted.current = true;
-    const id = getOrCreateIdentity();
-    identity.current = id;
-    const stored = loadName();
-    setLang(loadLang());
-    const nick = stored.trim() || "Вадим";
-    setName(nick);
-    if (!stored) saveName(nick);
-    const code = roomCode && /^[A-Z0-9]{5}$/.test(roomCode) ? roomCode : DEMO_CODE;
-    setBusy(true);
-    void (async () => {
-      try {
-        await act({
-          type: "join",
-          code,
-          name: nick,
-          playerId: id.playerId,
-          token: id.token,
-        });
-      } catch {
-        setError("room_not_found");
-      } finally {
-        setBusy(false);
-      }
-    })();
-  }, [act, roomCode]);
-
-  useEffect(() => {
-    if (!state || !you) return;
-    const me = state.players.find((p) => p.id === you);
-    const until = me?.snowUntil ?? 0;
-    if (until > snowSeen.current && until > Date.now()) {
-      snowSeen.current = until;
-      vibrateHit();
-      playHit();
-    }
-  }, [state, you]);
-
-  useEffect(() => {
-    if (!you) return;
-    const id = identity.current;
-    const code = codeRef.current;
-    if (!id || !code) return;
+    if (!you || !state?.code) return;
     let cancelled = false;
     let timer = 0;
     const loop = async () => {
       while (!cancelled) {
-        const liveId = identity.current;
-        const liveCode = codeRef.current;
-        if (!liveId || !liveCode) break;
-        await actRef.current({
-          type: "sync",
-          code: liveCode,
-          playerId: liveId.playerId,
-          token: liveId.token,
-        });
-        await new Promise((r) => {
-          timer = window.setTimeout(r, document.hidden ? 1800 : 500);
+        const id = identity.current;
+        const code = codeRef.current;
+        if (!id || !code) break;
+        await actRef.current(
+          { type: "sync", code, playerId: id.playerId, token: id.token },
+          { silent: true },
+        );
+        await new Promise((resolve) => {
+          timer = window.setTimeout(resolve, document.hidden ? 6000 : 1500);
         });
       }
     };
@@ -161,16 +145,35 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
     };
   }, [you, state?.code]);
 
+  useEffect(() => {
+    if (!state || !you) return;
+    const until = state.players.find((p) => p.id === you)?.snowUntil ?? 0;
+    if (until > snowSeen.current && until > Date.now()) {
+      snowSeen.current = until;
+      vibrateHit();
+      playHit();
+    }
+  }, [state, you]);
+
+  useEffect(() => {
+    setPicked(null);
+    setVoteStatus("idle");
+  }, [state?.roundId]);
+
   const toggleLang = () => {
     const next = lang === "ru" ? "en" : "ru";
     setLang(next);
     saveLang(next);
   };
 
-  const enter = async (mode: "create" | "join") => {
+  const enter = async (mode: "create" | "join", forcedCode?: string) => {
+    const nick = name.trim();
+    if (!nick) {
+      setError("name_required");
+      return;
+    }
     const id = identity.current ?? getOrCreateIdentity();
     identity.current = id;
-    const nick = name.trim() || (mode === "create" ? "Host" : "Player");
     saveName(nick);
     setBusy(true);
     setError(null);
@@ -181,24 +184,35 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
         });
         applyResult(res);
       } else {
-        const code = codeInput.trim().toUpperCase();
+        const code = (forcedCode ?? codeInput).trim().toUpperCase();
+        setCodeInput(code);
         if (!/^[A-Z0-9]{5}$/.test(code)) {
-          setError("room_not_found");
-          setBusy(false);
+          setError("invalid_code");
           return;
         }
-        await act({
-          type: "join",
-          code,
-          name: nick,
-          playerId: id.playerId,
-          token: id.token,
-        });
+        await act({ type: "join", code, name: nick, playerId: id.playerId, token: id.token });
       }
     } catch {
-      setError("room_not_found");
+      setError("network");
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
+  };
+
+  const leaveRoom = async () => {
+    const id = identity.current;
+    if (id && state) {
+      await act(
+        { type: "leave", code: state.code, playerId: id.playerId, token: id.token },
+        { silent: true },
+      );
+    }
+    setState(null);
+    setYou(null);
+    setPicked(null);
+    setPresentation(false);
+    snapKey.current = "";
+    onRoomCode(undefined);
   };
 
   const me = state?.players.find((p) => p.id === you);
@@ -215,60 +229,98 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
         t={t}
         name={name}
         codeInput={codeInput}
+        invitedCode={roomCode}
         busy={busy}
         error={error}
         onName={setName}
         onCode={setCodeInput}
         onCreate={() => void enter("create")}
         onJoin={() => void enter("join")}
+        onDemo={() => void enter("join", DEMO_CODE)}
         onLang={toggleLang}
       />
     );
   }
 
+  const votedCount = state.players.filter((player) => player.voted).length;
+  const allVoted = state.players.length > 0 && votedCount === state.players.length;
+
   return (
-    <div className="flex min-h-dvh flex-col bg-bg text-fg">
-      <header className="flex items-center justify-between gap-3 border-b border-line bg-surface px-4 py-2.5">
-        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-          <strong className="font-display tracking-[0.12em]">{APP_NAME}</strong>
-          <span className="font-display tracking-[0.16em] text-gold">{state.code}</span>
-          <Button
+    <div className={cn("quest-app", presentation && "is-presenting")}>
+      <header className="quest-header">
+        <div className="brand-lockup">
+          <span className="brand-mark" aria-hidden="true">
+            Q
+          </span>
+          <div>
+            <strong>{APP_NAME}</strong>
+            <span>{lang === "ru" ? "оценка как приключение" : "estimation as an adventure"}</span>
+          </div>
+        </div>
+        <div className="room-tools">
+          <button
             type="button"
-            variant="tiny"
-            size="tiny"
+            className="room-code"
             onClick={async () => {
               const url = `${location.origin}/?room=${state.code}`;
               try {
                 await navigator.clipboard.writeText(url);
+                setCopied(true);
+                window.setTimeout(() => setCopied(false), 1600);
               } catch {
-                /* ignore */
+                setError("network");
               }
-              setCopied(true);
-              window.setTimeout(() => setCopied(false), 1600);
             }}
+            aria-label={t.copy}
           >
-            <Copy className="size-3.5" />
-            {copied ? t.copied : t.copy}
+            <span>{state.code}</span>
+            {copied ? <Check /> : <Copy />}
+          </button>
+          <Button
+            type="button"
+            variant="tiny"
+            size="tiny"
+            aria-label={presentation ? t.exitPresentation : t.presentation}
+            onClick={() => setPresentation((value) => !value)}
+          >
+            <Presentation className="size-4" />
+            <span className="hide-phone">{presentation ? t.exitPresentation : t.presentation}</span>
           </Button>
-          <span className="text-xs text-muted">
-            {t.votesOf(state.votesCount, state.players.length)}
-          </span>
+          <Button type="button" variant="lang" size="tiny" onClick={toggleLang}>
+            {lang === "ru" ? "EN" : "RU"}
+          </Button>
+          <Button
+            type="button"
+            variant="tiny"
+            size="tiny"
+            aria-label={t.leave}
+            onClick={() => void leaveRoom()}
+          >
+            <LogOut className="size-4" />
+            <span className="hide-phone">{t.leave}</span>
+          </Button>
         </div>
-        <Button type="button" variant="lang" size="tiny" onClick={toggleLang}>
-          {lang === "ru" ? "EN" : "RU"}
-        </Button>
       </header>
 
-      <main className="room-grid grid min-h-0 flex-1">
-        <section className="flex flex-col gap-3.5 p-4">
+      {error ? (
+        <div className="room-error" role="alert">
+          <WifiOff className="size-4" /> {errorText(error, t)}
+          <button type="button" onClick={() => setError(null)}>
+            ×
+          </button>
+        </div>
+      ) : null}
+
+      <main className="quest-layout">
+        <div className="quest-stage">
           <TaskCard
             t={t}
             task={state.task}
             collapsed={taskCollapsed}
-            onToggle={() => setTaskCollapsed((v) => !v)}
+            onToggle={() => setTaskCollapsed((value) => !value)}
           />
 
-          {isHost && !state.task ? (
+          {isHost && !state.task && !presentation ? (
             <HostTaskForm
               t={t}
               onPost={(title, description) => {
@@ -285,34 +337,56 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
                 setTaskCollapsed(true);
               }}
             />
+          ) : !state.task ? (
+            <div className="waiting-card">
+              <Sparkles aria-hidden="true" />
+              <p>{t.waitingForTask}</p>
+            </div>
           ) : null}
 
-          <div className="table-felt rounded-xl p-4">
-            <div className="flex flex-wrap justify-center gap-2.5">
-              {state.players.map((p) => (
+          <section className="party-table" aria-labelledby="party-title">
+            <div className="section-heading">
+              <div>
+                <span className="eyebrow">
+                  <Users /> {t.team}
+                </span>
+                <h2 id="party-title">
+                  {allVoted ? t.allVoted : t.votesOf(votedCount, state.players.length)}
+                </h2>
+              </div>
+              <div className="vote-progress" aria-hidden="true">
+                <span
+                  style={{
+                    width: `${state.players.length ? (votedCount / state.players.length) * 100 : 0}%`,
+                  }}
+                />
+              </div>
+            </div>
+            <div className={cn("seat-grid", state.revealed && "is-revealed")}>
+              {state.players.map((player) => (
                 <Seat
-                  key={p.id}
-                  player={p}
+                  key={player.id}
+                  player={player}
                   t={t}
                   lang={lang}
                   now={now}
                   task={Boolean(state.task)}
                   revealed={state.revealed}
-                  outlier={Boolean(analysis?.outliers.some((o) => o.id === p.id))}
-                  onNameClick={(x, y) => {
-                    if (p.id === you) return;
-                    setMenu({ x, y, targetId: p.id });
-                  }}
+                  outlier={Boolean(analysis?.outliers.some((item) => item.id === player.id))}
+                  isYou={player.id === you}
+                  onNameClick={(x, y) => setMenu({ x, y, targetId: player.id })}
                 />
               ))}
             </div>
-          </div>
+          </section>
 
           {analysis ? (
             <ConsensusPanel
               t={t}
               lang={lang}
+              state={state}
               analysis={analysis}
+              isHost={isHost}
               onAsk={() => {
                 const id = identity.current;
                 if (!id) return;
@@ -321,143 +395,103 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
                   code: state.code,
                   playerId: id.playerId,
                   token: id.token,
-                  order: analysis.askOrder.map((p) => ({
-                    id: p.id,
-                    name: p.name,
-                    vote: p.vote || "",
-                  })),
                 });
               }}
             />
           ) : null}
 
-          <Deck
-            scale={state.scale}
-            picked={picked ?? me?.vote ?? null}
-            disabled={!state.task || state.revealed}
-            lang={lang}
-            onPick={(value) => {
-              const id = identity.current;
-              if (!id) return;
-              setPicked(value);
-              void act(
-                {
-                  type: "vote",
+          {state.task && !state.revealed && !presentation ? (
+            <section className="deck-panel" aria-labelledby="deck-title">
+              <div className="section-heading deck-heading">
+                <div>
+                  <span className="eyebrow">
+                    <Sparkles /> {t.chooseCard}
+                  </span>
+                  <h2 id="deck-title">{t.chooseCardHint}</h2>
+                </div>
+                <VoteState status={voteStatus} t={t} />
+              </div>
+              <Deck
+                scale={state.scale}
+                picked={picked ?? me?.vote ?? null}
+                lang={lang}
+                onPick={async (value) => {
+                  const id = identity.current;
+                  if (!id) return;
+                  const previous = picked ?? me?.vote ?? null;
+                  setPicked(value);
+                  setVoteStatus("saving");
+                  const ok = await act(
+                    {
+                      type: "vote",
+                      code: state.code,
+                      playerId: id.playerId,
+                      token: id.token,
+                      value,
+                    },
+                    { keepPicked: true },
+                  );
+                  if (ok) setVoteStatus("saved");
+                  else {
+                    setPicked(previous);
+                    setVoteStatus("failed");
+                  }
+                }}
+              />
+            </section>
+          ) : null}
+
+          {isHost && state.task && !presentation ? (
+            <HostControls
+              t={t}
+              state={state}
+              resultPick={resultPick}
+              onResultPick={setResultPick}
+              onReveal={() => {
+                const id = identity.current;
+                if (!id) return;
+                void act({
+                  type: "reveal",
                   code: state.code,
                   playerId: id.playerId,
                   token: id.token,
-                  value,
-                },
-                { keepPicked: true },
-              );
-            }}
-          />
-
-          {isHost && state.task ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                disabled={state.revealed}
-                onClick={() => {
-                  const id = identity.current;
-                  if (!id) return;
-                  void act({
-                    type: "reveal",
-                    code: state.code,
-                    playerId: id.playerId,
-                    token: id.token,
-                  });
-                }}
-              >
-                {t.reveal}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => {
-                  const id = identity.current;
-                  if (!id) return;
-                  setPicked(null);
-                  void act({
-                    type: "revote",
-                    code: state.code,
-                    playerId: id.playerId,
-                    token: id.token,
-                  });
-                }}
-              >
-                {t.revote}
-              </Button>
-              {state.revealed ? (
-                <div className="flex w-full flex-wrap items-center gap-2">
-                  <span className="text-sm text-muted">{t.resultLabel}:</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {state.scale.map((v) => (
-                      <MagicCard
-                        key={v}
-                        value={v}
-                        face="front"
-                        size="mini"
-                        lang={lang}
-                        selected={resultPick === v}
-                        onClick={() => setResultPick(v)}
-                      />
-                    ))}
-                  </div>
-                  <Button
-                    type="button"
-                    disabled={!resultPick}
-                    title={!resultPick ? t.pickResult : undefined}
-                    onClick={() => {
-                      const id = identity.current;
-                      if (!id || !resultPick) return;
-                      void act({
-                        type: "finalize",
-                        code: state.code,
-                        playerId: id.playerId,
-                        token: id.token,
-                        result: resultPick,
-                      });
-                      setResultPick(null);
-                    }}
-                  >
-                    {t.saveResult}
-                  </Button>
-                </div>
-              ) : null}
-            </div>
+                });
+              }}
+              onRevote={() => {
+                const id = identity.current;
+                if (!id) return;
+                setPicked(null);
+                void act({
+                  type: "revote",
+                  code: state.code,
+                  playerId: id.playerId,
+                  token: id.token,
+                });
+              }}
+              onFinalize={() => {
+                const id = identity.current;
+                if (!id || !resultPick) return;
+                void act({
+                  type: "finalize",
+                  code: state.code,
+                  playerId: id.playerId,
+                  token: id.token,
+                  result: resultPick,
+                });
+                setResultPick(null);
+              }}
+            />
           ) : null}
-        </section>
+        </div>
 
-        <aside className="flex min-h-0 flex-col border-t border-line lg:border-t-0 lg:border-l">
-          <div className="max-h-[34%] overflow-auto border-b border-line p-3">
-            <h3 className="mb-2 flex items-center gap-2 text-xs font-semibold tracking-[0.08em] text-gold uppercase">
-              <ScrollText className="size-3.5" />
-              {t.history}
-            </h3>
-            <ul className="space-y-2 text-sm">
-              {(state.history || []).length === 0 ? (
-                <li className="text-muted">{t.historyEmpty}</li>
-              ) : (
-                state.history.map((h) => (
-                  <li key={h.id} className="border-b border-line/80 pb-2">
-                    <div>
-                      <strong>{h.title}</strong>
-                      {" → "}
-                      <span className="font-bold text-gold-2">{h.result}</span>
-                    </div>
-                    <div className="text-xs text-muted">
-                      {(h.votes || []).map((v) => `${v.name}: ${v.value}`).join(" · ")}
-                    </div>
-                  </li>
-                ))
-              )}
-            </ul>
-          </div>
-          <ChatPanel
+        {!presentation ? (
+          <SidePanel
             t={t}
             lang={lang}
+            tab={sideTab}
+            onTab={setSideTab}
             you={you}
+            history={state.history}
             entries={state.chat}
             onSay={(text) => {
               const id = identity.current;
@@ -471,12 +505,15 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
               });
             }}
             onNick={(targetId, x, y) => {
-              if (targetId === you) return;
-              setMenu({ x, y, targetId });
+              if (targetId !== you) setMenu({ x, y, targetId });
             }}
           />
-        </aside>
+        ) : null}
       </main>
+
+      <div className="sr-only" aria-live="polite">
+        {voteStatus === "saved" ? t.voteSaved : voteStatus === "failed" ? t.voteFailed : ""}
+      </div>
 
       {menu ? (
         <ContextMenu
@@ -502,76 +539,166 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
   );
 }
 
+function errorText(error: string, t: (typeof I18N)[Lang]): string {
+  if (error === "name_required") return t.nameRequired;
+  if (error === "invalid_code") return t.invalidRoom;
+  if (error === "room_not_found") return t.roomMissing;
+  return t.actionFailed;
+}
+
 function Lobby({
   lang,
   t,
   name,
   codeInput,
+  invitedCode,
   busy,
   error,
   onName,
   onCode,
   onCreate,
   onJoin,
+  onDemo,
   onLang,
 }: {
   lang: Lang;
   t: (typeof I18N)[Lang];
   name: string;
   codeInput: string;
+  invitedCode?: string;
   busy: boolean;
   error: string | null;
-  onName: (v: string) => void;
-  onCode: (v: string) => void;
+  onName: (value: string) => void;
+  onCode: (value: string) => void;
   onCreate: () => void;
   onJoin: () => void;
+  onDemo: () => void;
   onLang: () => void;
 }) {
   return (
-    <div className="relative flex min-h-dvh items-start justify-center bg-bg px-4 pt-[12vh] text-fg">
-      <div className="lobby-glow" />
-      <div className="relative w-full max-w-[440px] rounded-xl border border-border bg-surface p-7 shadow-[0_20px_60px_#000a]">
-        <p className="m-0 text-[11px] tracking-[0.18em] text-gold uppercase">{t.kicker}</p>
-        <h1 className="mt-1 mb-2 font-display text-3xl tracking-[0.12em] text-balance">{APP_NAME}</h1>
-        <p className="text-muted text-pretty leading-normal">{t.lede}</p>
-        <label className="mt-5 mb-3 flex flex-col gap-1.5 text-sm text-muted">
-          {t.yourName}
+    <main className="lobby-page">
+      <div className="lobby-aurora" aria-hidden="true" />
+      <header className="lobby-nav">
+        <div className="brand-lockup">
+          <span className="brand-mark">Q</span>
+          <div>
+            <strong>{APP_NAME}</strong>
+            <span>Estimate together. Reveal together.</span>
+          </div>
+        </div>
+        <Button type="button" variant="lang" onClick={onLang}>
+          {lang === "ru" ? "EN" : "RU"}
+        </Button>
+      </header>
+
+      <section className="lobby-grid">
+        <div className="lobby-story">
+          <span className="eyebrow">
+            <Sparkles /> {lang === "ru" ? "PLANNING POKER ДЛЯ КОМАНД" : "PLANNING POKER FOR TEAMS"}
+          </span>
+          <h1>
+            {lang === "ru"
+              ? "Превратите оценку в короткое приключение"
+              : "Turn every estimate into a short adventure"}
+          </h1>
+          <p>{t.lede}</p>
+          <div className="lobby-points">
+            <span>{lang === "ru" ? "Без регистрации" : "No sign-up"}</span>
+            <span>{lang === "ru" ? "Скрытые голоса" : "Blind voting"}</span>
+            <span>{lang === "ru" ? "Понятный следующий шаг" : "A clear next step"}</span>
+          </div>
+          <div className="card-fan" aria-hidden="true">
+            <MagicCard value="s" face="front" size="hero" lang={lang} />
+            <MagicCard
+              value="m"
+              variantId="m-sledopyt-vernyak"
+              face="front"
+              size="hero"
+              lang={lang}
+            />
+            <MagicCard
+              value="l"
+              variantId="l-kapitan-skladny"
+              face="front"
+              size="hero"
+              lang={lang}
+            />
+          </div>
+        </div>
+
+        <div className="lobby-card">
+          {invitedCode ? <div className="invite-banner">{t.invited(invitedCode)}</div> : null}
+          <div>
+            <span className="eyebrow">
+              {lang === "ru" ? "СОБЕРИТЕ ГРУППУ" : "GATHER YOUR PARTY"}
+            </span>
+            <h2>
+              {lang === "ru" ? "Как вас представить команде?" : "How should the party know you?"}
+            </h2>
+          </div>
+          <label className="field-label" htmlFor="name">
+            {t.yourName}
+          </label>
           <Input
             id="name"
             value={name}
             maxLength={24}
             autoComplete="nickname"
-            onChange={(e) => onName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") onCreate();
+            autoFocus
+            onChange={(event) => onName(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") onCreate();
             }}
           />
-        </label>
-        <Button type="button" id="createBtn" className="mb-3 w-full" disabled={busy} onClick={onCreate}>
-          {busy ? t.connecting : t.create}
-        </Button>
-        <div className="flex gap-2">
-          <Input
-            id="code"
-            value={codeInput}
-            maxLength={8}
-            placeholder="ABC12"
-            className="text-center tracking-[0.2em] uppercase"
-            onChange={(e) => onCode(e.target.value.toUpperCase())}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") onJoin();
-            }}
-          />
-          <Button type="button" id="joinBtn" variant="ghost" disabled={busy} onClick={onJoin}>
-            {t.join}
+          <Button type="button" className="w-full" disabled={busy} onClick={onCreate}>
+            {busy ? t.connecting : t.create}
           </Button>
+          <p className="form-hint">{t.createHint}</p>
+
+          <div className="join-divider">
+            <span>{lang === "ru" ? "или по приглашению" : "or with an invite"}</span>
+          </div>
+          <label className="field-label" htmlFor="code">
+            {t.roomCode}
+          </label>
+          <div className="join-row">
+            <Input
+              id="code"
+              value={codeInput}
+              maxLength={5}
+              inputMode="text"
+              placeholder="ABC12"
+              className="room-input"
+              onChange={(event) =>
+                onCode(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))
+              }
+              onKeyDown={(event) => {
+                if (event.key === "Enter") onJoin();
+              }}
+            />
+            <Button type="button" variant="ghost" disabled={busy} onClick={onJoin}>
+              {t.join}
+            </Button>
+          </div>
+          <p className="form-hint">{t.joinHint}</p>
+          {error ? (
+            <div className="lobby-error" role="alert">
+              {errorText(error, t)}
+            </div>
+          ) : null}
+
+          <div className="demo-invite">
+            <div>
+              <strong>{t.demoTitle}</strong>
+              <span>{t.demoText}</span>
+            </div>
+            <Button type="button" variant="tiny" size="tiny" disabled={busy} onClick={onDemo}>
+              {t.tryDemo}
+            </Button>
+          </div>
         </div>
-        {error ? <p className="mt-3 text-sm text-outlier">{t.roomMissing}</p> : null}
-        <Button type="button" variant="lang" className="mt-4" onClick={onLang}>
-          {lang === "ru" ? "EN" : "RU"}
-        </Button>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }
 
@@ -586,30 +713,18 @@ function TaskCard({
   collapsed: boolean;
   onToggle: () => void;
 }) {
-  if (!task) {
-    return (
-      <article className="rounded-lg border border-border bg-surface px-4 py-4 text-muted">
-        <p>{t.noTask}</p>
-      </article>
-    );
-  }
-  const long = (task.description || "").length > 220 || (task.description || "").split("\n").length > 3;
+  if (!task) return null;
+  const long = task.description.length > 220 || task.description.split("\n").length > 3;
   const clamp = long && collapsed;
   return (
-    <article className="rounded-lg border border-border bg-surface px-[18px] py-4">
-      <h2 className="mt-0 mb-2 font-display text-xl text-balance">{task.title}</h2>
+    <article className="quest-card task-card">
+      <span className="eyebrow">{t.newTask}</span>
+      <h1>{task.title}</h1>
       {task.description ? (
-        <p
-          className={cn(
-            "whitespace-pre-wrap text-pretty leading-normal text-parchment",
-            clamp && "line-clamp-3",
-          )}
-        >
-          {task.description}
-        </p>
+        <p className={cn("task-copy", clamp && "line-clamp-3")}>{task.description}</p>
       ) : null}
       {long ? (
-        <button type="button" className="mt-2 text-sm text-gold" onClick={onToggle}>
+        <button type="button" className="text-link" onClick={onToggle}>
           {clamp ? t.expand : t.collapse}
         </button>
       ) : null}
@@ -627,21 +742,23 @@ function HostTaskForm({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-dashed border-line bg-surface p-3">
-      <h3 className="m-0 text-xs font-semibold tracking-[0.08em] text-gold uppercase">{t.newTask}</h3>
+    <section className="quest-card new-quest">
+      <span className="eyebrow">
+        <Sparkles /> {t.newTask}
+      </span>
+      <h1>{t.noTask}</h1>
       <Input
-        id="taskTitle"
         value={title}
         maxLength={140}
         placeholder={t.taskTitlePh}
-        onChange={(e) => setTitle(e.target.value)}
+        onChange={(event) => setTitle(event.target.value)}
       />
       <Textarea
-        id="taskDesc"
         value={description}
+        maxLength={4000}
         rows={4}
         placeholder={t.taskDescPh}
-        onChange={(e) => setDescription(e.target.value)}
+        onChange={(event) => setDescription(event.target.value)}
       />
       <Button
         type="button"
@@ -654,7 +771,7 @@ function HostTaskForm({
       >
         {t.postTask}
       </Button>
-    </div>
+    </section>
   );
 }
 
@@ -666,6 +783,7 @@ function Seat({
   task,
   revealed,
   outlier,
+  isYou,
   onNameClick,
 }: {
   player: PublicPlayer;
@@ -675,6 +793,7 @@ function Seat({
   task: boolean;
   revealed: boolean;
   outlier: boolean;
+  isYou: boolean;
   onNameClick: (x: number, y: number) => void;
 }) {
   const snow = player.snowUntil > now;
@@ -682,119 +801,303 @@ function Seat({
   if (task && player.voted && !revealed) face = "back";
   else if (revealed && player.vote) face = "front";
   return (
-    <div className="flex w-28 flex-col items-center gap-1.5 text-center">
-      <button
-        type="button"
-        className="w-full font-semibold hover:text-gold-2"
-        onClick={(e) => {
-          e.stopPropagation();
-          onNameClick(e.clientX, e.clientY);
-        }}
-      >
-        {player.name}
-        {snow ? <span className="ml-1">☃</span> : null}
-      </button>
-      <div className="flex items-center justify-center gap-1 text-[11px] text-gold">
-        {player.isHost ? <Crown className="size-3" /> : null}
-        {player.isHost ? t.host : null}
-        {player.isHost ? " · " : null}
-        {player.voted ? t.voted : t.waiting}
+    <article className={cn("player-seat", isYou && "is-you", outlier && revealed && "is-outlier")}>
+      <div className="player-meta">
+        <button
+          type="button"
+          disabled={isYou}
+          onClick={(event) => onNameClick(event.clientX, event.clientY)}
+        >
+          {player.name}
+          {isYou ? (lang === "ru" ? " · вы" : " · you") : ""}
+          {snow ? " ☃" : ""}
+        </button>
+        <span>
+          {player.isHost ? (
+            <>
+              <Crown /> {t.host}
+            </>
+          ) : player.voted ? (
+            t.voted
+          ) : (
+            t.waiting
+          )}
+        </span>
       </div>
       <MagicCard
         value={player.vote}
+        variantId={player.variantId}
         face={face}
-        size="seat"
+        size={revealed ? "hero" : "seat"}
         lang={lang}
         outlier={outlier && revealed}
       />
-    </div>
+    </article>
   );
 }
 
 function Deck({
   scale,
   picked,
-  disabled,
   lang,
   onPick,
 }: {
   scale: readonly CardValue[];
   picked: CardValue | null;
-  disabled: boolean;
   lang: Lang;
-  onPick: (v: CardValue) => void;
+  onPick: (value: CardValue) => void;
 }) {
   return (
-    <div className="flex flex-wrap justify-center gap-2">
-      {scale.map((v) => (
+    <div className="deck-grid">
+      {scale.map((value) => (
         <MagicCard
-          key={v}
-          value={v}
+          key={value}
+          value={value}
           face="front"
           size="deck"
           lang={lang}
-          selected={picked === v}
-          disabled={disabled}
-          onClick={() => onPick(v)}
+          selected={picked === value}
+          onClick={() => onPick(value)}
         />
       ))}
     </div>
   );
 }
 
+function VoteState({ status, t }: { status: VoteStatus; t: (typeof I18N)[Lang] }) {
+  if (status === "idle") return null;
+  return (
+    <span className={cn("vote-state", status === "failed" && "is-error")}>
+      {status === "saving" ? (
+        <span className="status-dot" />
+      ) : status === "saved" ? (
+        <Check />
+      ) : (
+        <WifiOff />
+      )}
+      {status === "saving" ? t.voteSaving : status === "saved" ? t.voteSaved : t.voteFailed}
+    </span>
+  );
+}
+
 function ConsensusPanel({
   t,
   lang,
+  state,
   analysis,
+  isHost,
   onAsk,
 }: {
   t: (typeof I18N)[Lang];
   lang: Lang;
+  state: Snapshot;
   analysis: NonNullable<ReturnType<typeof analyzeVotes>>;
+  isHost: boolean;
   onAsk: () => void;
 }) {
   const levelLabel =
-    analysis.level === "high" ? t.levelHigh : analysis.level === "medium" ? t.levelMedium : t.levelLow;
-  const outlierVals = [...new Set(analysis.outliers.map((p) => p.vote))];
-  let insight: string;
-  if (!analysis.sized.length && analysis.values.every((v) => !SIZE_RANK[v])) {
-    insight = t.noSizedVotes;
-  } else if (!analysis.outliers.length) insight = t.allAgree;
-  else insight = t.votedWhileMost(analysis.far?.name || "", analysis.far?.vote || "", analysis.mode);
+    analysis.level === "high"
+      ? t.levelHigh
+      : analysis.level === "medium"
+        ? t.levelMedium
+        : t.levelLow;
+  const outlierValues = [...new Set(analysis.outliers.map((player) => player.vote))];
+  const cardValues = state.players
+    .filter((player) => player.vote)
+    .map((player) => ({ value: player.vote as string, variantId: player.variantId }));
+  const questionCount = analysis.specials.filter((player) => player.vote === "?").length;
+  const coffeeCount = analysis.specials.filter((player) => player.vote === "☕").length;
+  let insight = t.allAgree;
+  if (!analysis.sized.length) insight = t.noSizedVotes;
+  else if (analysis.far)
+    insight = t.votedWhileMost(analysis.far.name, analysis.far.vote || "", analysis.mode);
 
   return (
-    <section className="rounded-lg border border-border bg-surface px-4 py-3.5">
-      <div className="mb-3 flex flex-wrap items-baseline gap-3">
-        <span className="font-display text-xl text-gold-2">
-          {t.consensus}: {analysis.consensusPct}%
-        </span>
-      </div>
-      <MiniFaces values={analysis.values} lang={lang} />
-      <div className="mt-3 grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-x-4 gap-y-1.5 text-sm text-muted">
-        <div>
-          {t.median}: <b className="font-semibold text-fg">{analysis.median}</b>
+    <section className="consensus-card">
+      <div className="consensus-score">
+        <div
+          className={cn("score-ring", `is-${analysis.level}`)}
+          style={{ "--score": `${analysis.consensusPct * 3.6}deg` } as React.CSSProperties}
+        >
+          <span>{analysis.consensusPct}%</span>
         </div>
         <div>
-          {t.mode}: <b className="font-semibold text-fg">{analysis.mode}</b>
-        </div>
-        <div>
-          {t.range}: <b className="font-semibold text-fg">{analysis.range}</b>
-        </div>
-        <div>
-          {t.outliers}:{" "}
-          <b className="font-semibold text-fg">{outlierVals.length ? outlierVals.join(", ") : t.none}</b>
-        </div>
-        <div>
-          {t.consensusLevel}: <b className="font-semibold text-fg">{levelLabel}</b>
+          <span className="eyebrow">{t.consensus}</span>
+          <h2>{levelLabel}</h2>
+          <p>{insight}</p>
         </div>
       </div>
-      <p className="my-2 leading-normal text-parchment">{insight}</p>
-      {analysis.askOrder.length ? (
-        <Button type="button" className="mt-1.5 w-auto" onClick={onAsk}>
+      <MiniFaces values={cardValues} lang={lang} />
+      <dl className="consensus-stats">
+        <div>
+          <dt>{t.median}</dt>
+          <dd>{analysis.median}</dd>
+        </div>
+        <div>
+          <dt>{t.mode}</dt>
+          <dd>{analysis.mode}</dd>
+        </div>
+        <div>
+          <dt>{t.range}</dt>
+          <dd>{analysis.range}</dd>
+        </div>
+        <div>
+          <dt>{t.outliers}</dt>
+          <dd>{outlierValues.length ? outlierValues.join(", ") : t.none}</dd>
+        </div>
+      </dl>
+      {questionCount || coffeeCount ? (
+        <div className="special-signals">
+          <strong>{t.specialVotes}</strong>
+          {questionCount ? (
+            <span>
+              ? · {t.clearQuestion} ({questionCount})
+            </span>
+          ) : null}
+          {coffeeCount ? (
+            <span>
+              ☕ · {t.breakRequested} ({coffeeCount})
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+      {isHost && analysis.askOrder.length ? (
+        <Button type="button" onClick={onAsk}>
           {t.askOutliers}
         </Button>
       ) : null}
     </section>
+  );
+}
+
+function HostControls({
+  t,
+  state,
+  resultPick,
+  onResultPick,
+  onReveal,
+  onRevote,
+  onFinalize,
+}: {
+  t: (typeof I18N)[Lang];
+  state: Snapshot;
+  resultPick: CardValue | null;
+  onResultPick: (value: CardValue) => void;
+  onReveal: () => void;
+  onRevote: () => void;
+  onFinalize: () => void;
+}) {
+  return (
+    <section className="host-controls">
+      {!state.revealed ? (
+        <>
+          <div>
+            <strong>{t.reveal}</strong>
+            <span>{t.revealHint}</span>
+          </div>
+          <Button type="button" onClick={onReveal}>
+            {t.reveal}
+          </Button>
+        </>
+      ) : (
+        <div className="finalize-panel">
+          <div className="finalize-title">
+            <div>
+              <strong>{t.finalEstimate}</strong>
+              <span>{t.pickResult}</span>
+            </div>
+            <Button type="button" variant="ghost" onClick={onRevote}>
+              {t.revote}
+            </Button>
+          </div>
+          <div className="result-grid">
+            {state.scale.map((value) => (
+              <button
+                key={value}
+                type="button"
+                className={cn(resultPick === value && "is-selected")}
+                onClick={() => onResultPick(value)}
+              >
+                {value}
+              </button>
+            ))}
+          </div>
+          <Button type="button" disabled={!resultPick} onClick={onFinalize}>
+            {t.saveResult}
+          </Button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function SidePanel({
+  t,
+  lang,
+  tab,
+  onTab,
+  you,
+  history,
+  entries,
+  onSay,
+  onNick,
+}: {
+  t: (typeof I18N)[Lang];
+  lang: Lang;
+  tab: "history" | "chat";
+  onTab: (tab: "history" | "chat") => void;
+  you: string;
+  history: Snapshot["history"];
+  entries: Snapshot["chat"];
+  onSay: (text: string) => void;
+  onNick: (id: string, x: number, y: number) => void;
+}) {
+  return (
+    <aside className="side-panel">
+      <div className="side-tabs" role="tablist">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "chat"}
+          onClick={() => onTab("chat")}
+        >
+          <MessageCircle /> {t.chat}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === "history"}
+          onClick={() => onTab("history")}
+        >
+          <ScrollText /> {t.history}
+        </button>
+      </div>
+      {tab === "history" ? (
+        <HistoryPanel t={t} history={history} />
+      ) : (
+        <ChatPanel t={t} lang={lang} you={you} entries={entries} onSay={onSay} onNick={onNick} />
+      )}
+    </aside>
+  );
+}
+
+function HistoryPanel({ t, history }: { t: (typeof I18N)[Lang]; history: Snapshot["history"] }) {
+  return (
+    <div className="history-panel">
+      {!history.length ? (
+        <p className="empty-copy">{t.historyEmpty}</p>
+      ) : (
+        history.map((item) => (
+          <article key={item.id} className="history-item">
+            <div>
+              <strong>{item.title}</strong>
+              <span>{item.result}</span>
+            </div>
+            <p>{item.votes.map((vote) => `${vote.name}: ${vote.value}`).join(" · ")}</p>
+          </article>
+        ))
+      )}
+    </div>
   );
 }
 
@@ -815,56 +1118,38 @@ function ChatPanel({
 }) {
   const [text, setText] = useState("");
   const logRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
-    const el = logRef.current;
-    if (!el) return;
-    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-    if (nearBottom) el.scrollTop = el.scrollHeight;
+    const element = logRef.current;
+    if (element) element.scrollTop = element.scrollHeight;
   }, [entries, lang]);
-
   return (
-    <div className="flex min-h-[240px] flex-1 flex-col">
-      <div
-        ref={logRef}
-        className="min-h-[180px] flex-1 overflow-auto bg-chat px-3 py-2.5 font-sans text-sm leading-[1.45]"
-      >
-        {entries.map((entry) => {
-          if (entry.kind === "snow") {
-            return (
-              <div key={entry.id} className="my-0.5 text-snow">
-                {chatText(entry, lang)}
-              </div>
-            );
-          }
-          if (entry.kind === "system") {
-            return (
-              <div key={entry.id} className="my-0.5 text-sys">
-                {chatText(entry, lang)}
-              </div>
-            );
-          }
-          return (
-            <div key={entry.id} className="my-0.5">
-              <button
-                type="button"
-                className={cn("font-bold", entry.fromId === you ? "text-you" : "text-say")}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (entry.fromId) onNick(entry.fromId, e.clientX, e.clientY);
-                }}
-              >
-                [{entry.from}]
-              </button>
-              {`: ${entry.text}`}
-            </div>
-          );
-        })}
+    <div className="chat-panel">
+      <div ref={logRef} className="chat-log">
+        {entries.map((entry) => (
+          <div key={entry.id} className={cn("chat-line", `is-${entry.kind}`)}>
+            {entry.kind === "say" ? (
+              <>
+                <button
+                  type="button"
+                  className={entry.fromId === you ? "is-you" : ""}
+                  onClick={(event) =>
+                    entry.fromId && onNick(entry.fromId, event.clientX, event.clientY)
+                  }
+                >
+                  {entry.from}
+                </button>
+                <span>{entry.text}</span>
+              </>
+            ) : (
+              <span>{chatText(entry, lang)}</span>
+            )}
+          </div>
+        ))}
       </div>
       <form
-        className="flex gap-1.5 bg-surface p-2"
-        onSubmit={(e) => {
-          e.preventDefault();
+        className="chat-form"
+        onSubmit={(event) => {
+          event.preventDefault();
           const value = text.trim();
           if (!value) return;
           onSay(value);
@@ -872,14 +1157,13 @@ function ChatPanel({
         }}
       >
         <Input
-          id="chatInput"
           value={text}
           maxLength={400}
           autoComplete="off"
           placeholder={t.sayPh}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(event) => setText(event.target.value)}
         />
-        <Button type="submit" variant="ghost" size="compact">
+        <Button type="submit" size="compact">
           {t.send}
         </Button>
       </form>
@@ -900,25 +1184,22 @@ function ContextMenu({
   onSnow: () => void;
   onClose: () => void;
 }) {
+  const [position, setPosition] = useState({ left: x, top: y });
   useEffect(() => {
-    const t = window.setTimeout(() => window.addEventListener("click", onClose), 0);
+    setPosition({
+      left: Math.min(x, window.innerWidth - 210),
+      top: Math.min(y, window.innerHeight - 84),
+    });
+    const timer = window.setTimeout(() => window.addEventListener("click", onClose), 0);
     return () => {
-      window.clearTimeout(t);
+      window.clearTimeout(timer);
       window.removeEventListener("click", onClose);
     };
-  }, [onClose]);
+  }, [onClose, x, y]);
   return (
-    <div
-      className="fixed z-20 min-w-[180px] rounded-sm border border-gold/40 bg-menu p-1 shadow-[0_8px_24px_#000c]"
-      style={{ left: Math.min(x, window.innerWidth - 200), top: Math.min(y, window.innerHeight - 80) }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <button
-        type="button"
-        className="block w-full rounded-sm px-2.5 py-2 text-left text-gold-2 hover:bg-gold/15"
-        onClick={onSnow}
-      >
-        {label}
+    <div className="context-menu" style={position} onClick={(event) => event.stopPropagation()}>
+      <button type="button" onClick={onSnow}>
+        ☃ {label}
       </button>
     </div>
   );

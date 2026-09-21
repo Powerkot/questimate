@@ -4,15 +4,17 @@ const NAME_KEY = "pp-name";
 const LANG_KEY = "pp-lang";
 
 function randomPart(): string {
-  return Math.random().toString(36).slice(2, 10);
+  const bytes = new Uint8Array(12);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(36).padStart(2, "0")).join("");
 }
 
 export function getOrCreateIdentity(): { playerId: string; token: string } {
   let playerId = sessionStorage.getItem(ID_KEY);
   let token = sessionStorage.getItem(TOKEN_KEY);
   if (!playerId || !token) {
-    playerId = `p_${randomPart()}${randomPart()}`.slice(0, 24);
-    token = `${randomPart()}${randomPart()}${randomPart()}`.slice(0, 24);
+    playerId = `p_${randomPart()}`.slice(0, 24);
+    token = `${randomPart()}${randomPart()}`.slice(0, 48);
     sessionStorage.setItem(ID_KEY, playerId);
     sessionStorage.setItem(TOKEN_KEY, token);
   }

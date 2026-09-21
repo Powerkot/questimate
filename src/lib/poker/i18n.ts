@@ -49,6 +49,33 @@ type Dict = {
   connecting: string;
   party: string;
   pickResult: string;
+  createHint: string;
+  joinHint: string;
+  roomCode: string;
+  invited: (code: string) => string;
+  demoTitle: string;
+  demoText: string;
+  tryDemo: string;
+  nameRequired: string;
+  invalidRoom: string;
+  actionFailed: string;
+  leave: string;
+  presentation: string;
+  exitPresentation: string;
+  chooseCard: string;
+  chooseCardHint: string;
+  voteSaving: string;
+  voteSaved: string;
+  voteFailed: string;
+  team: string;
+  allVoted: string;
+  waitingForTask: string;
+  chat: string;
+  specialVotes: string;
+  clearQuestion: string;
+  breakRequested: string;
+  revealHint: string;
+  finalEstimate: string;
 };
 
 export const I18N: Record<Lang, Dict> = {
@@ -100,6 +127,33 @@ export const I18N: Record<Lang, Dict> = {
     connecting: "Входим в группу…",
     party: "группа",
     pickResult: "Выберите итог по шкале",
+    createHint: "Начните новую оценку и пригласите команду ссылкой.",
+    joinHint: "Или войдите по пятисимвольному коду комнаты.",
+    roomCode: "Код комнаты",
+    invited: (code) => `Вас пригласили в комнату ${code}`,
+    demoTitle: "Посмотреть живую демо-комнату",
+    demoText: "Готовая задача, команда и раскрытые карты. Вход только по вашему нажатию.",
+    tryDemo: "Войти в RAID1",
+    nameRequired: "Сначала укажите имя, под которым вас увидит команда.",
+    invalidRoom: "Введите пятисимвольный код комнаты.",
+    actionFailed: "Не удалось сохранить действие. Проверьте соединение и повторите.",
+    leave: "Выйти",
+    presentation: "На экран",
+    exitPresentation: "Вернуть управление",
+    chooseCard: "Ваша колода",
+    chooseCardHint: "Выберите оценку — до раскрытия её видите только вы.",
+    voteSaving: "Сохраняем карту…",
+    voteSaved: "Карта лежит на столе",
+    voteFailed: "Карта не сохранилась — попробуйте ещё раз",
+    team: "Команда у стола",
+    allVoted: "Все готовы",
+    waitingForTask: "Ждём, когда ведущий выставит следующий квест.",
+    chat: "Чат",
+    specialVotes: "Особые сигналы",
+    clearQuestion: "Нужно уточнить задачу",
+    breakRequested: "Команде нужна пауза",
+    revealHint: "Карты останутся закрыты, пока вы не откроете стол.",
+    finalEstimate: "Итоговая оценка",
   },
   en: {
     kicker: APP_DOMAIN,
@@ -149,6 +203,33 @@ export const I18N: Record<Lang, Dict> = {
     connecting: "Joining the party…",
     party: "party",
     pickResult: "Pick a result on the scale",
+    createHint: "Start a fresh estimate and invite the team with a link.",
+    joinHint: "Or join an existing room with its five-character code.",
+    roomCode: "Room code",
+    invited: (code) => `You were invited to room ${code}`,
+    demoTitle: "Explore a live demo room",
+    demoText: "A ready task, party and revealed cards. You only enter when you choose to.",
+    tryDemo: "Enter RAID1",
+    nameRequired: "Enter the name your team should see first.",
+    invalidRoom: "Enter a five-character room code.",
+    actionFailed: "The action was not saved. Check the connection and try again.",
+    leave: "Leave",
+    presentation: "Present",
+    exitPresentation: "Return controls",
+    chooseCard: "Your deck",
+    chooseCardHint: "Pick an estimate — only you can see it before reveal.",
+    voteSaving: "Placing your card…",
+    voteSaved: "Your card is on the table",
+    voteFailed: "The card was not saved — try again",
+    team: "Party at the table",
+    allVoted: "Everyone is ready",
+    waitingForTask: "Waiting for the host to post the next quest.",
+    chat: "Chat",
+    specialVotes: "Special signals",
+    clearQuestion: "The task needs clarification",
+    breakRequested: "The party needs a break",
+    revealHint: "Cards stay hidden until you open the table.",
+    finalEstimate: "Final estimate",
   },
 };
 

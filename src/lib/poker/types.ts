@@ -38,7 +38,7 @@ export type HistoryEntry = {
   title: string;
   description: string;
   result: string;
-  votes: { name: string; value: string }[];
+  votes: { name: string; value: string; variantId?: string }[];
   ts: number;
 };
 
@@ -63,6 +63,8 @@ export type StoredRoom = {
   players: StoredPlayer[];
   task: Task | null;
   votes: Record<string, CardValue>;
+  roundId: string;
+  variants: Record<string, string>;
   revealed: boolean;
   history: HistoryEntry[];
   chat: ChatEntry[];
@@ -76,6 +78,7 @@ export type PublicPlayer = {
   isHost: boolean;
   voted: boolean;
   vote: CardValue | null;
+  variantId: string | null;
   snowUntil: number;
 };
 
@@ -85,6 +88,7 @@ export type Snapshot = {
   players: PublicPlayer[];
   task: Task | null;
   revealed: boolean;
+  roundId: string;
   votesCount: number;
   scale: readonly CardValue[];
   history: HistoryEntry[];

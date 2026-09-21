@@ -1,5 +1,5 @@
-import { DEMO_CODE, DEMO_SNOW_AFTER_MS, now, throwSnowball } from "./engine";
-import type { CardValue, ChatEntry, HistoryEntry, StoredPlayer, StoredRoom } from "./types";
+import { DEMO_CODE, DEMO_SNOW_AFTER_MS, now, selectVariantId, throwSnowball } from "./engine.ts";
+import type { CardValue, ChatEntry, HistoryEntry, StoredPlayer, StoredRoom } from "./types.ts";
 
 export const DEMO_BOTS: { id: string; name: string; token: string; vote: CardValue }[] = [
   { id: "botolga", name: "Ольга", token: "demo-token-olga", vote: "s" },
@@ -21,6 +21,7 @@ export function buildDemoRoom(): StoredRoom {
   const players = DEMO_BOTS.map((b) => bot(b.id, b.name, b.token));
   const votes: Record<string, CardValue> = {};
   for (const b of DEMO_BOTS) votes[b.id] = b.vote;
+  const roundId = "round-demo-black-friday";
 
   const history: HistoryEntry[] = [
     {
@@ -238,7 +239,7 @@ export function buildDemoRoom(): StoredRoom {
     },
   ];
 
-  return {
+  const room: StoredRoom = {
     code: DEMO_CODE,
     hostId: "botolga",
     players,
@@ -249,12 +250,18 @@ export function buildDemoRoom(): StoredRoom {
         "Оцените работу на пике: x12 к обычному трафику, очередь ретраев, таймауты антифрода и деградация вместо падения кассы.\n\nНужно понять, хватит ли текущего лимита на эквайере, не упрёмся ли в синхронный вызов скоринга и что будет, если провайдер начнёт отдавать 429.\n\nВ оценку закладываем: нагрузку, наблюдаемость, рубильник и откат. Не закладываем редизайн админки и новые методы оплаты.",
     },
     votes,
+    roundId,
+    variants: {},
     revealed: true,
     history,
     chat,
     snowUntil: {},
     demoHit: {},
   };
+  for (const [playerId, value] of Object.entries(votes)) {
+    room.variants[playerId] = selectVariantId(room, playerId, value);
+  }
+  return room;
 }
 
 export function tickDemoRoom(room: StoredRoom): boolean {
@@ -264,7 +271,10 @@ export function tickDemoRoom(room: StoredRoom): boolean {
   for (const b of DEMO_BOTS) {
     if (present.has(b.id)) continue;
     room.players.push(bot(b.id, b.name, b.token));
-    if (!room.votes[b.id]) room.votes[b.id] = b.vote;
+    if (!room.votes[b.id]) {
+      room.votes[b.id] = b.vote;
+      room.variants[b.id] = selectVariantId(room, b.id, b.vote);
+    }
     changed = true;
   }
   if (!room.players.some((p) => p.id === room.hostId)) {
