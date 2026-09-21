@@ -475,14 +475,14 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
                   media="(max-width: 759px)"
                   srcSet={
                     tableMode === "round"
-                      ? "/room/table-round-720.webp"
+                      ? "/room/table-round-v2-720.webp"
                       : "/room/table-long-720.webp"
                   }
                 />
                 <img
                   src={
                     tableMode === "round"
-                      ? "/room/table-round-1200.webp"
+                      ? "/room/table-round-v2-1200.webp"
                       : "/room/table-long-1200.webp"
                   }
                   width="1200"
@@ -507,7 +507,10 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
                   />
                 </div>
               </div>
-              <div className={cn("seat-grid", state.revealed && "is-revealed")}>
+              <div
+                className={cn("seat-grid", state.revealed && "is-revealed")}
+                data-seat-count={state.players.length}
+              >
                 {state.players.map((player, index) => (
                   <Seat
                     key={player.id}
@@ -1171,23 +1174,12 @@ function Seat({
           disabled={isYou}
           onClick={(event) => onNameClick(event.clientX, event.clientY)}
         >
+          {player.isHost && player.online ? <Crown aria-hidden="true" /> : null}
           {player.name}
           {isYou ? (lang === "ru" ? " · вы" : " · you") : ""}
           {snow ? " ☃" : ""}
         </button>
-        <span>
-          {!player.online ? (
-            t.away
-          ) : player.isHost ? (
-            <>
-              <Crown /> {t.host}
-            </>
-          ) : player.voted ? (
-            t.voted
-          ) : (
-            t.waiting
-          )}
-        </span>
+        <span>{!player.online ? t.away : player.voted ? t.voted : t.waiting}</span>
       </div>
       <MagicCard
         value={player.vote}
