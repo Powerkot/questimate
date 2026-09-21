@@ -15,6 +15,7 @@ export const DEMO_SNOW_AFTER_MS = 12_000;
 export const PRESENCE_AWAY_MS = 30_000;
 const PLAYER_RETENTION_MS = 24 * 60 * 60_000;
 const HEARTBEAT_WRITE_MS = 15_000;
+const LEAVE_NOTICE_COOLDOWN_MS = 60_000;
 const CHAT_CAP = 300;
 
 export function now(): number {
@@ -80,6 +81,10 @@ function pushChat(room: StoredRoom, entry: ChatEntry): void {
   if (room.chat.length > CHAT_CAP) room.chat = room.chat.slice(-250);
 }
 
+function activePlayers(room: StoredRoom): StoredPlayer[] {
+  return room.players.filter((player) => !player.leftAt);
+}
+
 export function throwSnowball(room: StoredRoom, from: StoredPlayer, target: StoredPlayer): void {
   const until = now() + 10_000;
   room.snowUntil[target.id] = until;
@@ -104,7 +109,7 @@ export function snapshot(room: StoredRoom, viewerId: string): Snapshot {
     passwordProtected: Boolean(room.password),
     cardBackId: room.cardBackId,
     hostId: room.hostId,
-    players: room.players.map((p) => ({
+    players: activePlayers(room).map((p) => ({
       id: p.id,
       name: p.name,
       isHost: p.id === room.hostId,
@@ -171,8 +176,9 @@ function expireAbandonedPlayers(room: StoredRoom): void {
     delete room.variants[id];
     delete room.snowUntil[id];
   }
-  if (!room.players.some((player) => player.id === room.hostId)) {
-    room.hostId = room.players[0]?.id ?? "";
+  const presentPlayers = activePlayers(room);
+  if (!presentPlayers.some((player) => player.id === room.hostId)) {
+    room.hostId = presentPlayers[0]?.id ?? "";
   }
 }
 
@@ -182,7 +188,7 @@ function requirePlayer(
   token: string,
 ): { player: StoredPlayer; heartbeatDue: boolean } | null {
   const p = room.players.find((x) => x.id === playerId);
-  if (!p || p.token !== token) return null;
+  if (!p || p.token !== token || p.leftAt) return null;
   const seenAt = now();
   const heartbeatDue = seenAt - p.lastSeen >= HEARTBEAT_WRITE_MS;
   p.lastSeen = seenAt;
@@ -224,12 +230,16 @@ export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
 
   if (action.type === "join") {
     const name = action.name.trim().slice(0, 24) || "Player";
-    const existing = room.players.find((p) => p.id === action.playerId);
+    const existingByToken = room.players.find((p) => p.token === action.token);
+    const existingById = room.players.find((p) => p.id === action.playerId);
+    const existing = existingByToken ?? existingById;
     if (existing) {
       if (existing.token !== action.token) return { ok: false, error: "unauthorized" };
       existing.name = name;
       existing.lastSeen = now();
       if (!existing.joinedAt) existing.joinedAt = now();
+      delete existing.leftAt;
+      if (!activePlayers(room).some((p) => p.id === room.hostId)) room.hostId = existing.id;
       return { ok: true, room, you: existing.id };
     }
     const player: StoredPlayer = {
@@ -240,7 +250,7 @@ export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
       joinedAt: now(),
     };
     room.players.push(player);
-    if (!room.players.some((p) => p.id === room.hostId)) room.hostId = player.id;
+    if (!activePlayers(room).some((p) => p.id === room.hostId)) room.hostId = player.id;
     pushChat(room, {
       id: makeId("c"),
       kind: "system",
@@ -261,19 +271,25 @@ export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
   }
 
   if (action.type === "leave") {
-    room.players = room.players.filter((p) => p.id !== me.id);
+    const leftAt = now();
+    me.leftAt = leftAt;
+    me.lastSeen = leftAt;
     delete room.votes[me.id];
     delete room.variants[me.id];
     delete room.snowUntil[me.id];
-    if (room.players.length === 0) return { ok: true, room, you: me.id, empty: true };
-    if (room.hostId === me.id) room.hostId = room.players[0].id;
-    pushChat(room, {
-      id: makeId("c"),
-      kind: "system",
-      text: `${me.name} покидает группу.`,
-      textEn: `${me.name} leaves the party.`,
-      ts: now(),
-    });
+    const remainingPlayers = activePlayers(room);
+    if (remainingPlayers.length === 0) return { ok: true, room, you: me.id, empty: true };
+    if (room.hostId === me.id) room.hostId = remainingPlayers[0].id;
+    if (!me.lastLeaveNoticeAt || leftAt - me.lastLeaveNoticeAt >= LEAVE_NOTICE_COOLDOWN_MS) {
+      me.lastLeaveNoticeAt = leftAt;
+      pushChat(room, {
+        id: makeId("c"),
+        kind: "system",
+        text: `${me.name} покидает группу.`,
+        textEn: `${me.name} leaves the party.`,
+        ts: leftAt,
+      });
+    }
     return { ok: true, room, you: me.id };
   }
 
@@ -292,7 +308,7 @@ export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
   }
 
   if (action.type === "snowball") {
-    const target = room.players.find((p) => p.id === action.targetId);
+    const target = activePlayers(room).find((p) => p.id === action.targetId);
     if (!target || target.id === me.id) return { ok: false, error: "invalid" };
     const until = now() + 10_000;
     room.snowUntil[target.id] = until;
