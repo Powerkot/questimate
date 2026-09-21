@@ -133,122 +133,236 @@
   position: relative;
   min-height: 100dvh;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 15% 10%, #183456 0, transparent 36%),
-    radial-gradient(circle at 88% 82%, #5b351f55 0, transparent 34%),
-    linear-gradient(145deg, #070b13 10%, #0c1320 55%, #070b13);
+  background: #07101b;
   color: var(--color-fg);
 }
-.lobby-page::before {
+.lobby-backdrop,
+.lobby-backdrop img,
+.lobby-shade {
   position: absolute;
   inset: 0;
-  background-image:
-    linear-gradient(#ffffff05 1px, transparent 1px),
-    linear-gradient(90deg, #ffffff05 1px, transparent 1px);
-  background-size: 48px 48px;
-  content: "";
-  mask-image: linear-gradient(to bottom, black, transparent 80%);
-  pointer-events: none;
+  width: 100%;
+  height: 100%;
 }
-.lobby-aurora {
-  position: absolute;
-  inset: -20% 0 auto 35%;
-  height: 34rem;
-  background: radial-gradient(ellipse, #dba73518, transparent 65%);
-  filter: blur(22px);
+.lobby-backdrop img {
+  object-fit: cover;
+  object-position: center;
+}
+.lobby-shade {
+  background:
+    linear-gradient(90deg, #06111ef2 0%, #07111edc 25%, #07111e7d 48%, #07111e1a 72%),
+    linear-gradient(180deg, #03091499 0%, transparent 20%, transparent 72%, #030914b8 100%);
   pointer-events: none;
 }
 .lobby-nav {
   position: relative;
-  z-index: 2;
+  z-index: 3;
   display: flex;
-  max-width: 1180px;
+  width: min(100% - 2.5rem, 1440px);
   margin: auto;
   align-items: center;
   justify-content: space-between;
-  padding: 1rem 1.1rem;
+  padding: 1.5rem 0;
 }
-.lobby-grid {
+.lobby-nav .brand-mark {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50% 50% 45% 50%;
+  background: #07101ec9;
+  font-size: 1.55rem;
+  box-shadow:
+    inset 0 0 0 4px #07101e,
+    inset 0 0 0 5px #dba73599,
+    0 10px 30px #0008;
+}
+.lobby-nav .brand-lockup strong {
+  color: #f3d899;
+  font-size: clamp(0.92rem, 2vw, 1.25rem);
+  letter-spacing: 0.11em;
+}
+.lobby-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.lobby-help {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  gap: 0.4rem;
+  border: 0;
+  background: transparent;
+  color: #f7f3e8;
+  font: inherit;
+  font-size: 0.9rem;
+}
+.lobby-help svg {
+  display: none;
+  width: 1rem;
+  height: 1rem;
+}
+.lobby-help:hover {
+  color: var(--color-gold-2);
+}
+.lobby-hero {
   position: relative;
-  z-index: 1;
-  display: grid;
-  max-width: 1120px;
-  margin: 0 auto;
-  gap: 2rem;
-  padding: 2rem 1rem 4rem;
+  z-index: 2;
+  display: flex;
+  width: min(100% - 2.5rem, 1440px);
+  min-height: calc(100dvh - 6rem);
+  margin: auto;
+  align-items: center;
+  padding: 2rem 0 7rem;
 }
-.lobby-story {
-  align-self: center;
+.lobby-copy {
+  width: min(44rem, 51vw);
 }
-.lobby-story h1 {
-  max-width: 16ch;
-  margin: 0.75rem 0 1rem;
+.lobby-copy .eyebrow {
+  font-size: 0.8rem;
+  letter-spacing: 0.25em;
+  text-shadow: 0 2px 16px #000;
+}
+.lobby-copy h1 {
+  max-width: 12ch;
+  margin: 1.5rem 0 1.25rem;
   font-family: var(--font-display);
-  font-size: clamp(2.15rem, 8vw, 4.7rem);
+  font-size: clamp(3.25rem, 5.35vw, 5.6rem);
+  font-weight: 600;
   line-height: 0.98;
-  letter-spacing: -0.035em;
+  letter-spacing: -0.045em;
+  text-shadow: 0 4px 28px #000b;
 }
-.lobby-story > p {
-  max-width: 38rem;
-  color: var(--color-parchment);
-  font-size: 1.05rem;
-  line-height: 1.65;
+.lobby-copy > p:not(.lobby-lifetime) {
+  max-width: 37rem;
+  margin: 0;
+  color: #e5e2dc;
+  font-size: clamp(1.05rem, 1.55vw, 1.28rem);
+  line-height: 1.5;
+  text-shadow: 0 2px 18px #000;
 }
-.lobby-points {
+.lobby-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.55rem;
-  margin-top: 1.25rem;
-}
-.lobby-points span {
-  border: 1px solid #ffffff16;
-  border-radius: 999px;
-  background: #ffffff08;
-  padding: 0.42rem 0.72rem;
-  color: var(--color-parchment);
-  font-size: 0.78rem;
-}
-.card-fan {
-  position: relative;
-  display: none;
-  height: 16rem;
+  gap: 0.75rem;
   margin-top: 2rem;
 }
-.card-fan .mc {
+.lobby-actions button {
+  min-width: 12.2rem;
+  height: 3.25rem;
+  border-radius: 11px;
+  font-size: 1rem;
+}
+.lobby-actions button:first-child {
+  background: linear-gradient(180deg, #f5d580, #d5a440);
+  box-shadow:
+    inset 0 1px #fff9,
+    0 10px 34px #0007;
+}
+.lobby-actions button:nth-child(2) {
+  border: 1px solid #e7ba60bb;
+  background: #07101eba;
+  box-shadow: 0 10px 34px #0005;
+  backdrop-filter: blur(8px);
+}
+.lobby-lifetime {
+  display: flex;
+  margin: 0.8rem 0 0;
+  align-items: center;
+  gap: 0.45rem;
+  color: #b7bec8;
+  font-size: 0.84rem;
+}
+.lobby-lifetime svg {
+  width: 0.95rem;
+  height: 0.95rem;
+  color: #dbb65f;
+}
+.demo-link {
+  display: inline-flex;
+  margin-top: 2.5rem;
+  align-items: center;
+  gap: 0.75rem;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: #f0ca68;
+  font: inherit;
+  font-size: 0.95rem;
+}
+.demo-link > span {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  border: 1px solid #edbd55;
+  border-radius: 50%;
+  background: #07101eb3;
+}
+.demo-link svg {
+  width: 0.85rem;
+  height: 0.85rem;
+  margin-left: 0.12rem;
+  fill: currentColor;
+}
+.demo-link:hover {
+  color: #ffe3a1;
+}
+.lobby-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  overflow-y: auto;
+  place-items: center;
+  background: #020710bd;
+  padding: 1.25rem;
+  backdrop-filter: blur(10px);
+}
+.lobby-modal {
+  position: relative;
+  width: min(100%, 29rem);
+  border: 1px solid #d5a44066;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 90% 0, #dba73518, transparent 32%),
+    linear-gradient(155deg, #152134f7, #080f19fc);
+  padding: clamp(1.4rem, 4vw, 2.2rem);
+  box-shadow:
+    0 38px 100px #000d,
+    inset 0 1px #ffffff14;
+}
+.lobby-modal-close {
   position: absolute;
-  left: 3rem;
-  bottom: 0;
-  width: 9rem;
-  transform: rotate(-10deg);
+  top: 0.85rem;
+  right: 0.85rem;
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  border: 1px solid #ffffff16;
+  border-radius: 50%;
+  background: #ffffff08;
+  color: var(--color-muted);
 }
-.card-fan .mc:nth-child(2) {
-  left: 10rem;
-  z-index: 2;
-  transform: translateY(-1.2rem);
+.lobby-modal-close:hover {
+  color: var(--color-fg);
 }
-.card-fan .mc:nth-child(3) {
-  left: 17rem;
-  transform: rotate(10deg);
+.lobby-modal-close svg {
+  width: 1rem;
+  height: 1rem;
 }
-.lobby-card {
+.lobby-form,
+.how-to-play {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  align-self: center;
-  border: 1px solid #ffffff17;
-  border-radius: 24px;
-  background: linear-gradient(155deg, #172131f2, #0d1420f4);
-  padding: clamp(1.15rem, 5vw, 2rem);
-  box-shadow:
-    0 34px 90px #000a,
-    inset 0 1px #ffffff0d;
-  backdrop-filter: blur(18px);
 }
-.lobby-card h2 {
-  margin: 0.3rem 0 0.45rem;
+.lobby-form h2,
+.how-to-play h2 {
+  margin: 0.15rem 2.5rem 0.6rem 0;
   font-family: var(--font-display);
-  font-size: 1.45rem;
-  line-height: 1.18;
+  font-size: 1.7rem;
+  line-height: 1.15;
 }
 .field-label {
   margin-top: 0.2rem;
@@ -306,14 +420,6 @@
   text-align: center;
   text-transform: uppercase;
 }
-.invite-banner {
-  border: 1px solid #7f9fff55;
-  border-radius: 10px;
-  background: #415b9a22;
-  padding: 0.7rem 0.8rem;
-  color: #c9d4ff;
-  font-size: 0.82rem;
-}
 .lobby-error {
   border-radius: 9px;
   background: #9f3d3d22;
@@ -321,27 +427,30 @@
   color: #ffb4b4;
   font-size: 0.82rem;
 }
-.demo-invite {
+.how-to-play ol {
   display: grid;
-  grid-template-columns: 1fr auto;
+  gap: 0.75rem;
+  margin: 0.35rem 0 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+.how-to-play li {
+  display: grid;
+  grid-template-columns: 2rem 1fr;
   align-items: center;
-  gap: 0.7rem;
-  margin-top: 0.35rem;
-  border-top: 1px solid var(--color-line);
-  padding-top: 1rem;
+  gap: 0.75rem;
+  color: var(--color-parchment);
+  line-height: 1.4;
 }
-.demo-invite div {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-.demo-invite strong {
-  font-size: 0.84rem;
-}
-.demo-invite span {
-  color: var(--color-muted);
-  font-size: 0.72rem;
-  line-height: 1.3;
+.how-to-play li strong {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 1px solid #d5a44077;
+  border-radius: 50%;
+  color: var(--color-gold-2);
+  font-family: var(--font-display);
 }
 
 /* App shell */
@@ -1036,15 +1145,6 @@
 }
 
 @media (min-width: 760px) {
-  .lobby-grid {
-    grid-template-columns: minmax(0, 1.15fr) minmax(340px, 0.75fr);
-    min-height: calc(100dvh - 5rem);
-    align-items: center;
-    padding-top: 1rem;
-  }
-  .card-fan {
-    display: block;
-  }
   .quest-layout {
     grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
     align-items: start;
@@ -1081,6 +1181,78 @@
   }
   .seat-grid.is-revealed {
     grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+  }
+}
+
+@media (max-width: 759px) {
+  .lobby-backdrop img {
+    object-position: center;
+  }
+  .lobby-shade {
+    background:
+      linear-gradient(180deg, #06101b9e 0%, #06101b70 22%, #06101bd6 53%, #040a12fa 100%),
+      linear-gradient(90deg, #06101b99, transparent 55%, #06101b55);
+  }
+  .lobby-nav {
+    width: min(100% - 1.5rem, 42rem);
+    padding-block: 0.85rem;
+  }
+  .lobby-nav .brand-mark {
+    width: 2.45rem;
+    height: 2.45rem;
+    font-size: 1.25rem;
+  }
+  .lobby-nav .brand-lockup strong {
+    font-size: 0.9rem;
+  }
+  .lobby-help {
+    width: 2.5rem;
+    justify-content: center;
+    overflow: hidden;
+    color: #f7f3e8;
+    font-size: 0;
+  }
+  .lobby-help svg {
+    display: block;
+  }
+  .lobby-nav-actions {
+    gap: 0.35rem;
+  }
+  .lobby-hero {
+    width: min(100% - 2rem, 42rem);
+    min-height: calc(100dvh - 4.2rem);
+    align-items: flex-end;
+    padding: 8rem 0 max(2rem, env(safe-area-inset-bottom));
+  }
+  .lobby-copy {
+    width: 100%;
+  }
+  .lobby-copy .eyebrow {
+    font-size: 0.68rem;
+    letter-spacing: 0.18em;
+  }
+  .lobby-copy h1 {
+    max-width: 11ch;
+    margin: 0.85rem 0;
+    font-size: clamp(2.55rem, 12vw, 4.25rem);
+  }
+  .lobby-copy > p:not(.lobby-lifetime) {
+    max-width: 32rem;
+    font-size: 1rem;
+    line-height: 1.45;
+  }
+  .lobby-actions {
+    margin-top: 1.25rem;
+  }
+  .lobby-actions button {
+    min-width: 0;
+    flex: 1 1 12rem;
+  }
+  .lobby-lifetime {
+    font-size: 0.76rem;
+  }
+  .demo-link {
+    margin-top: 1.35rem;
   }
 }
 
@@ -1139,11 +1311,22 @@
     width: 3.8rem;
     height: 3.8rem;
   }
-  .demo-invite {
-    grid-template-columns: 1fr;
+  .lobby-actions {
+    display: grid;
   }
-  .lobby-story h1 {
-    font-size: 2.45rem;
+  .lobby-actions button {
+    width: 100%;
+  }
+  .lobby-modal-backdrop {
+    align-items: end;
+    padding: 0;
+  }
+  .lobby-modal {
+    width: 100%;
+    max-height: calc(100dvh - 1rem);
+    overflow-y: auto;
+    border-radius: 22px 22px 0 0;
+    padding: 1.35rem 1rem max(1.25rem, env(safe-area-inset-bottom));
   }
 }
 

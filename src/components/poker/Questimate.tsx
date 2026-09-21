@@ -1,15 +1,18 @@
 import {
   Check,
+  CircleHelp,
   Copy,
   Crown,
   LockKeyhole,
   LogOut,
   MessageCircle,
+  Play,
   Presentation,
   ScrollText,
   Sparkles,
   Users,
   WifiOff,
+  X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MagicCard, MiniFaces } from "@/components/poker/MagicCard";
@@ -255,6 +258,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
         onCode={setCodeInput}
         onCreatePassword={setCreatePassword}
         onJoinPassword={setJoinPassword}
+        onClearError={() => setError(null)}
         onCreate={() => void enter("create")}
         onJoin={() => void enter("join")}
         onDemo={() => void enter("join", DEMO_CODE)}
@@ -588,6 +592,7 @@ function Lobby({
   onCode,
   onCreatePassword,
   onJoinPassword,
+  onClearError,
   onCreate,
   onJoin,
   onDemo,
@@ -606,163 +611,285 @@ function Lobby({
   onCode: (value: string) => void;
   onCreatePassword: (value: string) => void;
   onJoinPassword: (value: string) => void;
+  onClearError: () => void;
   onCreate: () => void;
   onJoin: () => void;
   onDemo: () => void;
   onLang: () => void;
 }) {
+  const [panel, setPanel] = useState<"create" | "join" | "demo" | "help" | null>(
+    invitedCode ? "join" : null,
+  );
+
+  useEffect(() => {
+    if (invitedCode) setPanel("join");
+  }, [invitedCode]);
+
+  useEffect(() => {
+    if (!panel) return;
+    const close = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !busy) setPanel(null);
+    };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [busy, panel]);
+
+  const openPanel = (next: NonNullable<typeof panel>) => {
+    onClearError();
+    setPanel(next);
+  };
+
+  const closePanel = () => {
+    if (busy) return;
+    onClearError();
+    setPanel(null);
+  };
+
+  const isRu = lang === "ru";
+
   return (
     <main className="lobby-page">
-      <div className="lobby-aurora" aria-hidden="true" />
+      <picture className="lobby-backdrop" aria-hidden="true">
+        <source media="(max-width: 640px)" srcSet="/hero/tavern-mobile-768.webp" />
+        <img
+          src="/hero/tavern-1586.webp"
+          srcSet="/hero/tavern-1200.webp 1200w, /hero/tavern-1586.webp 1586w"
+          sizes="100vw"
+          width="1586"
+          height="992"
+          alt=""
+          loading="eager"
+          decoding="async"
+          fetchPriority="high"
+        />
+      </picture>
+      <div className="lobby-shade" aria-hidden="true" />
       <header className="lobby-nav">
         <div className="brand-lockup">
-          <span className="brand-mark">Q</span>
+          <span className="brand-mark" aria-hidden="true">
+            Q
+          </span>
           <div>
             <strong>{APP_NAME}</strong>
-            <span>Estimate together. Reveal together.</span>
           </div>
         </div>
-        <Button type="button" variant="lang" onClick={onLang}>
-          {lang === "ru" ? "EN" : "RU"}
-        </Button>
+        <div className="lobby-nav-actions">
+          <button type="button" className="lobby-help" onClick={() => openPanel("help")}>
+            <CircleHelp aria-hidden="true" /> {isRu ? "Как играть" : "How it works"}
+          </button>
+          <Button type="button" variant="lang" onClick={onLang}>
+            {isRu ? "EN" : "RU"}
+          </Button>
+        </div>
       </header>
 
-      <section className="lobby-grid">
-        <div className="lobby-story">
+      <section className="lobby-hero">
+        <div className="lobby-copy">
           <span className="eyebrow">
-            <Sparkles /> {lang === "ru" ? "PLANNING POKER ДЛЯ КОМАНД" : "PLANNING POKER FOR TEAMS"}
+            <Sparkles aria-hidden="true" /> {isRu ? "ПЛАНИРОВОЧНЫЙ ПОКЕР" : "PLANNING POKER"}
           </span>
-          <h1>
-            {lang === "ru"
-              ? "Превратите оценку в короткое приключение"
-              : "Turn every estimate into a short adventure"}
-          </h1>
-          <p>{t.lede}</p>
-          <div className="lobby-points">
-            <span>{lang === "ru" ? "Без регистрации" : "No sign-up"}</span>
-            <span>{lang === "ru" ? "Скрытые голоса" : "Blind voting"}</span>
-            <span>{lang === "ru" ? "Понятный следующий шаг" : "A clear next step"}</span>
-          </div>
-          <div className="card-fan" aria-hidden="true">
-            <MagicCard value="s" face="front" size="hero" lang={lang} />
-            <MagicCard
-              value="m"
-              variantId="m-sledopyt-vernyak"
-              face="front"
-              size="hero"
-              lang={lang}
-            />
-            <MagicCard
-              value="l"
-              variantId="l-kapitan-skladny"
-              face="front"
-              size="hero"
-              lang={lang}
-            />
-          </div>
-        </div>
-
-        <div className="lobby-card">
-          {invitedCode ? <div className="invite-banner">{t.invited(invitedCode)}</div> : null}
-          <div>
-            <span className="eyebrow">
-              {lang === "ru" ? "СОБЕРИТЕ ГРУППУ" : "GATHER YOUR PARTY"}
-            </span>
-            <h2>
-              {lang === "ru" ? "Как вас представить команде?" : "How should the party know you?"}
-            </h2>
-          </div>
-          <label className="field-label" htmlFor="name">
-            {t.yourName}
-          </label>
-          <Input
-            id="name"
-            value={name}
-            maxLength={24}
-            autoComplete="nickname"
-            autoFocus
-            onChange={(event) => onName(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") onCreate();
-            }}
-          />
-          <label className="field-label" htmlFor="create-password">
-            {t.createPassword}
-          </label>
-          <Input
-            id="create-password"
-            type="password"
-            value={createPassword}
-            minLength={4}
-            maxLength={128}
-            autoComplete="new-password"
-            placeholder={t.passwordPlaceholder}
-            onChange={(event) => onCreatePassword(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") onCreate();
-            }}
-          />
-          <p className="form-hint">{t.passwordHint}</p>
-          <Button type="button" className="w-full" disabled={busy} onClick={onCreate}>
-            {busy ? t.connecting : t.create}
-          </Button>
-          <p className="form-hint">{t.createHint}</p>
-          <p className="privacy-hint">
-            <LockKeyhole aria-hidden="true" /> {t.roomLifetime}
+          <h1>{isRu ? "Соберите команду за одним столом" : "Bring the team to one table"}</h1>
+          <p>
+            {isRu
+              ? "Все выбирают карту. Оценки открываются одновременно. Договориться становится проще."
+              : "Everyone picks a card. Estimates are revealed together. Reaching agreement gets easier."}
           </p>
-
-          <div className="join-divider">
-            <span>{lang === "ru" ? "или по приглашению" : "or with an invite"}</span>
-          </div>
-          <label className="field-label" htmlFor="code">
-            {t.roomCode}
-          </label>
-          <Input
-            id="code"
-            value={codeInput}
-            maxLength={5}
-            inputMode="text"
-            placeholder="ABC12"
-            className="room-input"
-            onChange={(event) => onCode(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
-          />
-          <label className="field-label" htmlFor="join-password">
-            {t.joinPassword}
-          </label>
-          <Input
-            id="join-password"
-            type="password"
-            value={joinPassword}
-            minLength={4}
-            maxLength={128}
-            autoComplete="current-password"
-            placeholder={t.passwordPlaceholder}
-            onChange={(event) => onJoinPassword(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") onJoin();
-            }}
-          />
-          <Button type="button" className="w-full" variant="ghost" disabled={busy} onClick={onJoin}>
-            {busy ? t.connecting : t.join}
-          </Button>
-          <p className="form-hint">{t.joinHint}</p>
-          {error ? (
-            <div className="lobby-error" role="alert">
-              {errorText(error, t)}
-            </div>
-          ) : null}
-
-          <div className="demo-invite">
-            <div>
-              <strong>{t.demoTitle}</strong>
-              <span>{t.demoText}</span>
-            </div>
-            <Button type="button" variant="tiny" size="tiny" disabled={busy} onClick={onDemo}>
-              {t.tryDemo}
+          <div className="lobby-actions">
+            <Button type="button" onClick={() => openPanel("create")}>
+              {t.create}
+            </Button>
+            <Button type="button" variant="ghost" onClick={() => openPanel("join")}>
+              {isRu ? "Войти по коду" : "Join with a code"}
             </Button>
           </div>
+          <p className="lobby-lifetime">
+            <LockKeyhole aria-hidden="true" />
+            {isRu
+              ? "Без регистрации · Комната удалится через 24 часа"
+              : "No sign-up · The room is deleted after 24 hours"}
+          </p>
+          <button type="button" className="demo-link" onClick={() => openPanel("demo")}>
+            <span aria-hidden="true">
+              <Play />
+            </span>
+            {isRu ? "Посмотреть демо" : "Explore the demo"}
+          </button>
         </div>
       </section>
+
+      {panel ? (
+        <div className="lobby-modal-backdrop" role="presentation" onMouseDown={closePanel}>
+          <section
+            className="lobby-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="lobby-modal-title"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="lobby-modal-close"
+              aria-label={isRu ? "Закрыть" : "Close"}
+              onClick={closePanel}
+            >
+              <X aria-hidden="true" />
+            </button>
+
+            {panel === "help" ? (
+              <div className="how-to-play">
+                <span className="eyebrow">{isRu ? "КАК ЭТО РАБОТАЕТ" : "HOW IT WORKS"}</span>
+                <h2 id="lobby-modal-title">
+                  {isRu ? "Три шага — и оценка готова" : "Three steps to an estimate"}
+                </h2>
+                <ol>
+                  <li>
+                    <strong>1</strong>
+                    <span>{isRu ? "Ведущий показывает задачу." : "The host shares a task."}</span>
+                  </li>
+                  <li>
+                    <strong>2</strong>
+                    <span>{isRu ? "Каждый выбирает карту." : "Everyone picks a card."}</span>
+                  </li>
+                  <li>
+                    <strong>3</strong>
+                    <span>
+                      {isRu
+                        ? "Карты открываются вместе — можно обсудить разницу."
+                        : "Cards are revealed together, ready to discuss."}
+                    </span>
+                  </li>
+                </ol>
+                <Button type="button" onClick={() => openPanel("create")}>
+                  {t.create}
+                </Button>
+              </div>
+            ) : (
+              <form
+                className="lobby-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  if (panel === "create") onCreate();
+                  else if (panel === "join") onJoin();
+                  else onDemo();
+                }}
+              >
+                <span className="eyebrow">
+                  {panel === "create"
+                    ? isRu
+                      ? "НОВАЯ КОМНАТА"
+                      : "NEW ROOM"
+                    : panel === "demo"
+                      ? isRu
+                        ? "ДЕМО-КОМНАТА"
+                        : "DEMO ROOM"
+                      : isRu
+                        ? "ПО ПРИГЛАШЕНИЮ"
+                        : "WITH AN INVITE"}
+                </span>
+                <h2 id="lobby-modal-title">
+                  {panel === "create"
+                    ? isRu
+                      ? "Как вас представить команде?"
+                      : "What should the team call you?"
+                    : panel === "demo"
+                      ? isRu
+                        ? "Заглянуть за готовый стол"
+                        : "Join a ready-made table"
+                      : invitedCode
+                        ? t.invited(invitedCode)
+                        : isRu
+                          ? "Введите код комнаты"
+                          : "Enter the room code"}
+                </h2>
+
+                <label className="field-label" htmlFor="name">
+                  {t.yourName}
+                </label>
+                <Input
+                  id="name"
+                  value={name}
+                  maxLength={24}
+                  autoComplete="nickname"
+                  autoFocus
+                  onChange={(event) => onName(event.target.value)}
+                />
+
+                {panel === "create" ? (
+                  <>
+                    <label className="field-label" htmlFor="create-password">
+                      {t.createPassword}
+                    </label>
+                    <Input
+                      id="create-password"
+                      type="password"
+                      value={createPassword}
+                      minLength={4}
+                      maxLength={128}
+                      autoComplete="new-password"
+                      placeholder={t.passwordPlaceholder}
+                      onChange={(event) => onCreatePassword(event.target.value)}
+                    />
+                    <p className="form-hint">{t.passwordHint}</p>
+                  </>
+                ) : null}
+
+                {panel === "join" ? (
+                  <>
+                    <label className="field-label" htmlFor="code">
+                      {t.roomCode}
+                    </label>
+                    <Input
+                      id="code"
+                      value={codeInput}
+                      maxLength={5}
+                      inputMode="text"
+                      placeholder="ABC12"
+                      className="room-input"
+                      onChange={(event) =>
+                        onCode(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))
+                      }
+                    />
+                    <label className="field-label" htmlFor="join-password">
+                      {t.joinPassword}
+                    </label>
+                    <Input
+                      id="join-password"
+                      type="password"
+                      value={joinPassword}
+                      minLength={4}
+                      maxLength={128}
+                      autoComplete="current-password"
+                      placeholder={t.passwordPlaceholder}
+                      onChange={(event) => onJoinPassword(event.target.value)}
+                    />
+                  </>
+                ) : null}
+
+                {panel === "demo" ? <p className="form-hint">{t.demoText}</p> : null}
+                {error ? (
+                  <div className="lobby-error" role="alert">
+                    {errorText(error, t)}
+                  </div>
+                ) : null}
+                <Button type="submit" className="w-full" disabled={busy}>
+                  {busy
+                    ? t.connecting
+                    : panel === "create"
+                      ? t.create
+                      : panel === "demo"
+                        ? t.tryDemo
+                        : t.join}
+                </Button>
+                {panel === "create" ? (
+                  <p className="privacy-hint">
+                    <LockKeyhole aria-hidden="true" /> {t.roomLifetime}
+                  </p>
+                ) : null}
+              </form>
+            )}
+          </section>
+        </div>
+      ) : null}
     </main>
   );
 }
