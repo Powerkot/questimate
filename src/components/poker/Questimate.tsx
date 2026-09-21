@@ -24,6 +24,7 @@ import { DEMO_CODE } from "@/lib/poker/engine";
 import { getOrCreateIdentity, loadLang, loadName, saveLang, saveName } from "@/lib/poker/identity";
 import { I18N, chatText, type Lang } from "@/lib/poker/i18n";
 import { playHit, vibrateHit } from "@/lib/poker/sound";
+import { tableLayoutMode, tableSeatPosition } from "@/lib/poker/table-layout";
 import { type CardValue, type PublicPlayer, type Snapshot } from "@/lib/poker/types";
 import { APP_NAME } from "@/lib/brand";
 import { cn } from "@/lib/cn";
@@ -53,6 +54,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
   const [now, setNow] = useState(() => Date.now());
   const [menu, setMenu] = useState<{ x: number; y: number; targetId: string } | null>(null);
   const [sideTab, setSideTab] = useState<"history" | "chat">("chat");
+  const [mobilePane, setMobilePane] = useState<"table" | "chat" | "history">("table");
   const [presentation, setPresentation] = useState(false);
   const identity = useRef<{ playerId: string; token: string } | null>(null);
   const snowSeen = useRef(0);
@@ -231,6 +233,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
     setYou(null);
     setPicked(null);
     setPresentation(false);
+    setMobilePane("table");
     snapKey.current = "";
     onRoomCode(undefined);
   };
@@ -269,9 +272,16 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
 
   const votedCount = state.players.filter((player) => player.voted).length;
   const allVoted = state.players.length > 0 && votedCount === state.players.length;
+  const tableMode = tableLayoutMode(state.players.length);
 
   return (
-    <div className={cn("quest-app", presentation && "is-presenting")}>
+    <div
+      className={cn(
+        "quest-app",
+        presentation && "is-presenting",
+        !presentation && `mobile-pane-${mobilePane}`,
+      )}
+    >
       <header className="quest-header">
         <div className="brand-lockup">
           <span className="brand-mark" aria-hidden="true">
@@ -370,40 +380,66 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
             </div>
           ) : null}
 
-          <section className="party-table" aria-labelledby="party-title">
-            <div className="section-heading">
-              <div>
+          <section
+            className={cn("party-table", `table-mode-${tableMode}`)}
+            aria-labelledby="party-title"
+          >
+            <div className="table-scene">
+              <picture className="table-scene-art" aria-hidden="true">
+                <source
+                  media="(max-width: 759px)"
+                  srcSet={
+                    tableMode === "round"
+                      ? "/room/table-round-720.webp"
+                      : "/room/table-long-720.webp"
+                  }
+                />
+                <img
+                  src={
+                    tableMode === "round"
+                      ? "/room/table-round-1200.webp"
+                      : "/room/table-long-1200.webp"
+                  }
+                  width="1200"
+                  height="751"
+                  alt=""
+                  decoding="async"
+                />
+              </picture>
+              <div className="table-scene-shade" aria-hidden="true" />
+              <div className="table-status">
                 <span className="eyebrow">
                   <Users /> {t.team}
                 </span>
                 <h2 id="party-title">
                   {allVoted ? t.allVoted : t.votesOf(votedCount, state.players.length)}
                 </h2>
+                <div className="vote-progress" aria-hidden="true">
+                  <span
+                    style={{
+                      width: `${state.players.length ? (votedCount / state.players.length) * 100 : 0}%`,
+                    }}
+                  />
+                </div>
               </div>
-              <div className="vote-progress" aria-hidden="true">
-                <span
-                  style={{
-                    width: `${state.players.length ? (votedCount / state.players.length) * 100 : 0}%`,
-                  }}
-                />
+              <div className={cn("seat-grid", state.revealed && "is-revealed")}>
+                {state.players.map((player, index) => (
+                  <Seat
+                    key={player.id}
+                    player={player}
+                    t={t}
+                    lang={lang}
+                    now={now}
+                    task={Boolean(state.task)}
+                    revealed={state.revealed}
+                    outlier={Boolean(analysis?.outliers.some((item) => item.id === player.id))}
+                    isYou={player.id === you}
+                    backId={state.cardBackId}
+                    style={tableSeatPosition(index, state.players.length, tableMode)}
+                    onNameClick={(x, y) => setMenu({ x, y, targetId: player.id })}
+                  />
+                ))}
               </div>
-            </div>
-            <div className={cn("seat-grid", state.revealed && "is-revealed")}>
-              {state.players.map((player) => (
-                <Seat
-                  key={player.id}
-                  player={player}
-                  t={t}
-                  lang={lang}
-                  now={now}
-                  task={Boolean(state.task)}
-                  revealed={state.revealed}
-                  outlier={Boolean(analysis?.outliers.some((item) => item.id === player.id))}
-                  isYou={player.id === you}
-                  backId={state.cardBackId}
-                  onNameClick={(x, y) => setMenu({ x, y, targetId: player.id })}
-                />
-              ))}
             </div>
           </section>
 
@@ -539,6 +575,44 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
           />
         ) : null}
       </main>
+
+      {!presentation ? (
+        <nav
+          className="mobile-room-nav"
+          aria-label={lang === "ru" ? "Разделы комнаты" : "Room sections"}
+        >
+          <button
+            type="button"
+            className={cn(mobilePane === "table" && "is-active")}
+            onClick={() => setMobilePane("table")}
+          >
+            <Users aria-hidden="true" />
+            <span>{lang === "ru" ? "Стол" : "Table"}</span>
+          </button>
+          <button
+            type="button"
+            className={cn(mobilePane === "chat" && "is-active")}
+            onClick={() => {
+              setSideTab("chat");
+              setMobilePane("chat");
+            }}
+          >
+            <MessageCircle aria-hidden="true" />
+            <span>{t.chat}</span>
+          </button>
+          <button
+            type="button"
+            className={cn(mobilePane === "history" && "is-active")}
+            onClick={() => {
+              setSideTab("history");
+              setMobilePane("history");
+            }}
+          >
+            <ScrollText aria-hidden="true" />
+            <span>{lang === "ru" ? "История" : "History"}</span>
+          </button>
+        </nav>
+      ) : null}
 
       <div className="sr-only" aria-live="polite">
         {voteStatus === "saved" ? t.voteSaved : voteStatus === "failed" ? t.voteFailed : ""}
@@ -977,6 +1051,7 @@ function Seat({
   outlier,
   isYou,
   backId,
+  style,
   onNameClick,
 }: {
   player: PublicPlayer;
@@ -988,6 +1063,7 @@ function Seat({
   outlier: boolean;
   isYou: boolean;
   backId: string;
+  style?: React.CSSProperties;
   onNameClick: (x: number, y: number) => void;
 }) {
   const snow = player.snowUntil > now;
@@ -995,7 +1071,10 @@ function Seat({
   if (task && player.voted && !revealed) face = "back";
   else if (revealed && player.vote) face = "front";
   return (
-    <article className={cn("player-seat", isYou && "is-you", outlier && revealed && "is-outlier")}>
+    <article
+      className={cn("player-seat", isYou && "is-you", outlier && revealed && "is-outlier")}
+      style={style}
+    >
       <div className="player-meta">
         <button
           type="button"
