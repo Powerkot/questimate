@@ -21,6 +21,7 @@ type Dict = {
   copied: string;
   noTask: string;
   newTask: string;
+  currentTask: string;
   taskTitlePh: string;
   taskDescPh: string;
   postTask: string;
@@ -108,6 +109,7 @@ export const I18N: Record<Lang, Dict> = {
     copied: "Ссылка скопирована",
     noTask: "Ведущий ещё не выставил задачу",
     newTask: "Новая задача",
+    currentTask: "Текущая задача",
     taskTitlePh: "Название задачи",
     taskDescPh: "Описание. Длинный текст можно свернуть.",
     postTask: "Показать команде",
@@ -123,7 +125,7 @@ export const I18N: Record<Lang, Dict> = {
     voted: "карта на столе",
     waiting: "думает",
     away: "отошёл",
-    expand: "Развернуть",
+    expand: "Подробнее",
     collapse: "Свернуть",
     snow: "Бросить снежок",
     roomMissing: "Комната не найдена",
@@ -194,6 +196,7 @@ export const I18N: Record<Lang, Dict> = {
     copied: "Link copied",
     noTask: "The host has not posted a task yet",
     newTask: "New task",
+    currentTask: "Current task",
     taskTitlePh: "Task title",
     taskDescPh: "Description. Long text can be collapsed.",
     postTask: "Show to the team",
@@ -209,7 +212,7 @@ export const I18N: Record<Lang, Dict> = {
     voted: "card on the table",
     waiting: "thinking",
     away: "away",
-    expand: "Expand",
+    expand: "More details",
     collapse: "Collapse",
     snow: "Throw a snowball",
     roomMissing: "Room not found",
