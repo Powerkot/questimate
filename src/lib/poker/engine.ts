@@ -6,7 +6,7 @@ import {
   type StoredPlayer,
   type StoredRoom,
 } from "./types.ts";
-import { cardVariantIds } from "./cards.ts";
+import { cardBackIds, cardVariantIds, DEFAULT_CARD_BACK_ID } from "./cards.ts";
 import { analyzeVotes } from "./consensus.ts";
 
 export const DEMO_CODE = "RAID1";
@@ -45,6 +45,14 @@ function stableHash(value: string): number {
   return hash >>> 0;
 }
 
+export function randomCardBackId(): string {
+  const backs = cardBackIds();
+  if (!backs.length) return DEFAULT_CARD_BACK_ID;
+  const bytes = new Uint32Array(1);
+  crypto.getRandomValues(bytes);
+  return backs[bytes[0] % backs.length];
+}
+
 export function selectVariantId(
   room: Pick<StoredRoom, "code" | "task" | "roundId">,
   playerId: string,
@@ -58,6 +66,10 @@ export function selectVariantId(
 export function normalizeRoom(room: StoredRoom): StoredRoom {
   room.roundId ||= room.task?.id ?? makeId("r");
   room.variants ||= {};
+  const backs = cardBackIds();
+  if (!backs.includes(room.cardBackId)) {
+    room.cardBackId = backs[stableHash(room.code) % backs.length] ?? DEFAULT_CARD_BACK_ID;
+  }
   return room;
 }
 
@@ -87,6 +99,7 @@ export function snapshot(room: StoredRoom, viewerId: string): Snapshot {
   const t = now();
   return {
     code: room.code,
+    cardBackId: room.cardBackId,
     hostId: room.hostId,
     players: room.players.map((p) => ({
       id: p.id,
@@ -103,6 +116,9 @@ export function snapshot(room: StoredRoom, viewerId: string): Snapshot {
     task: room.task,
     revealed: room.revealed,
     roundId: room.roundId,
+    deckVariants: Object.fromEntries(
+      SCALE.map((value) => [value, selectVariantId(room, viewerId, value)]),
+    ) as Record<CardValue, string>,
     votesCount: Object.keys(room.votes).length,
     scale: SCALE,
     history: room.history,
@@ -113,6 +129,7 @@ export function snapshot(room: StoredRoom, viewerId: string): Snapshot {
 export function createRoom(code: string, player: StoredPlayer): StoredRoom {
   const room: StoredRoom = {
     code,
+    cardBackId: randomCardBackId(),
     hostId: player.id,
     players: [player],
     task: null,

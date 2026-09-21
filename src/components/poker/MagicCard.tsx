@@ -1,4 +1,4 @@
-import { CARD_BACK, cardLore } from "@/lib/poker/cards";
+import { cardBackArt, cardLore } from "@/lib/poker/cards";
 import type { Lang } from "@/lib/poker/i18n";
 import type { CardValue } from "@/lib/poker/types";
 import { cn } from "@/lib/cn";
@@ -9,6 +9,7 @@ type Face = "back" | "front" | "empty";
 type Props = {
   value?: CardValue | string | null;
   variantId?: string | null;
+  backId?: string | null;
   face: Face;
   lang?: Lang;
   size?: Size;
@@ -21,6 +22,7 @@ type Props = {
 export function MagicCard({
   value,
   variantId,
+  backId,
   face,
   lang = "ru",
   size = "seat",
@@ -52,7 +54,7 @@ export function MagicCard({
   const inner = (
     <span className="mc-inner">
       <span className="mc-side mc-back">
-        <img src={CARD_BACK} alt="" draggable={false} loading="lazy" />
+        <img src={cardBackArt(backId)} alt="" draggable={false} loading="lazy" />
       </span>
       <span className="mc-side mc-front">
         {lore ? (

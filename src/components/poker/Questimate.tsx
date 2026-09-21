@@ -374,6 +374,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
                   revealed={state.revealed}
                   outlier={Boolean(analysis?.outliers.some((item) => item.id === player.id))}
                   isYou={player.id === you}
+                  backId={state.cardBackId}
                   onNameClick={(x, y) => setMenu({ x, y, targetId: player.id })}
                 />
               ))}
@@ -415,6 +416,8 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
                 scale={state.scale}
                 picked={picked ?? me?.vote ?? null}
                 lang={lang}
+                variants={state.deckVariants}
+                backId={state.cardBackId}
                 onPick={async (value) => {
                   const id = identity.current;
                   if (!id) return;
@@ -784,6 +787,7 @@ function Seat({
   revealed,
   outlier,
   isYou,
+  backId,
   onNameClick,
 }: {
   player: PublicPlayer;
@@ -794,6 +798,7 @@ function Seat({
   revealed: boolean;
   outlier: boolean;
   isYou: boolean;
+  backId: string;
   onNameClick: (x: number, y: number) => void;
 }) {
   const snow = player.snowUntil > now;
@@ -827,6 +832,7 @@ function Seat({
       <MagicCard
         value={player.vote}
         variantId={player.variantId}
+        backId={backId}
         face={face}
         size={revealed ? "hero" : "seat"}
         lang={lang}
@@ -840,11 +846,15 @@ function Deck({
   scale,
   picked,
   lang,
+  variants,
+  backId,
   onPick,
 }: {
   scale: readonly CardValue[];
   picked: CardValue | null;
   lang: Lang;
+  variants: Record<CardValue, string>;
+  backId: string;
   onPick: (value: CardValue) => void;
 }) {
   return (
@@ -853,6 +863,8 @@ function Deck({
         <MagicCard
           key={value}
           value={value}
+          variantId={variants[value]}
+          backId={backId}
           face="front"
           size="deck"
           lang={lang}

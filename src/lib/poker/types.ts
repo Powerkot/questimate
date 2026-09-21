@@ -59,6 +59,7 @@ export type StoredPlayer = {
 
 export type StoredRoom = {
   code: string;
+  cardBackId: string;
   hostId: string;
   players: StoredPlayer[];
   task: Task | null;
@@ -84,11 +85,13 @@ export type PublicPlayer = {
 
 export type Snapshot = {
   code: string;
+  cardBackId: string;
   hostId: string;
   players: PublicPlayer[];
   task: Task | null;
   revealed: boolean;
   roundId: string;
+  deckVariants: Record<CardValue, string>;
   votesCount: number;
   scale: readonly CardValue[];
   history: HistoryEntry[];

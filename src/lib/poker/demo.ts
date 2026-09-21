@@ -3,6 +3,7 @@ import {
   DEMO_SNOW_AFTER_MS,
   makeId,
   now,
+  randomCardBackId,
   selectVariantId,
   throwSnowball,
 } from "./engine.ts";
@@ -255,6 +256,7 @@ export function buildDemoRoom(): StoredRoom {
 
   const room: StoredRoom = {
     code: DEMO_CODE,
+    cardBackId: randomCardBackId(),
     hostId: "botolga",
     players,
     task: { ...DEMO_TASK },
