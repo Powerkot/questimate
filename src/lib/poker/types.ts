@@ -57,9 +57,15 @@ export type StoredPlayer = {
   joinedAt?: number;
 };
 
+export type RoomPassword = {
+  salt: string;
+  hash: string;
+};
+
 export type StoredRoom = {
   code: string;
   cardBackId: string;
+  password?: RoomPassword;
   hostId: string;
   players: StoredPlayer[];
   task: Task | null;
@@ -85,6 +91,7 @@ export type PublicPlayer = {
 
 export type Snapshot = {
   code: string;
+  passwordProtected: boolean;
   cardBackId: string;
   hostId: string;
   players: PublicPlayer[];
@@ -99,5 +106,8 @@ export type Snapshot = {
 };
 
 export type PokerOk = { ok: true; you: string; state: Snapshot };
-export type PokerErr = { ok: false; error: "room_not_found" | "unauthorized" | "invalid" };
+export type PokerErr = {
+  ok: false;
+  error: "room_not_found" | "password_required" | "wrong_password" | "unauthorized" | "invalid";
+};
 export type PokerResult = PokerOk | PokerErr;

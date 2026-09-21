@@ -106,6 +106,17 @@ describe("poker engine", () => {
     assert.equal(snapshot(room, "host01").cardBackId, initialBack);
   });
 
+  it("only exposes whether a room is protected, never its password hash", () => {
+    const room = createRoom("ABCDE", stored("host01", "host-token", Date.now()), {
+      password: { salt: "private-salt", hash: "private-hash" },
+    });
+    const publicState = snapshot(room, "host01");
+
+    assert.equal(publicState.passwordProtected, true);
+    assert.equal(JSON.stringify(publicState).includes("private-salt"), false);
+    assert.equal(JSON.stringify(publicState).includes("private-hash"), false);
+  });
+
   it("gives legacy rooms a deterministic card back", () => {
     const room = createRoom("ABCDE", stored("host01", "host-token", Date.now()));
     delete (room as Partial<typeof room>).cardBackId;

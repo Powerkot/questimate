@@ -262,6 +262,22 @@
   font-size: 0.76rem;
   line-height: 1.35;
 }
+.privacy-hint {
+  display: flex;
+  margin: -0.1rem 0 0.2rem;
+  align-items: flex-start;
+  gap: 0.4rem;
+  color: #aebdd2;
+  font-size: 0.72rem;
+  line-height: 1.4;
+}
+.privacy-hint svg {
+  width: 0.85rem;
+  height: 0.85rem;
+  flex: 0 0 auto;
+  margin-top: 0.08rem;
+  color: var(--color-gold);
+}
 .join-divider {
   display: flex;
   align-items: center;

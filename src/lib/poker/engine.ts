@@ -5,6 +5,7 @@ import {
   type Snapshot,
   type StoredPlayer,
   type StoredRoom,
+  type RoomPassword,
 } from "./types.ts";
 import { cardBackIds, cardVariantIds, DEFAULT_CARD_BACK_ID } from "./cards.ts";
 import { analyzeVotes } from "./consensus.ts";
@@ -99,6 +100,7 @@ export function snapshot(room: StoredRoom, viewerId: string): Snapshot {
   const t = now();
   return {
     code: room.code,
+    passwordProtected: Boolean(room.password),
     cardBackId: room.cardBackId,
     hostId: room.hostId,
     players: room.players.map((p) => ({
@@ -126,10 +128,15 @@ export function snapshot(room: StoredRoom, viewerId: string): Snapshot {
   };
 }
 
-export function createRoom(code: string, player: StoredPlayer): StoredRoom {
+export function createRoom(
+  code: string,
+  player: StoredPlayer,
+  options: { password?: RoomPassword } = {},
+): StoredRoom {
   const room: StoredRoom = {
     code,
     cardBackId: randomCardBackId(),
+    password: options.password,
     hostId: player.id,
     players: [player],
     task: null,
@@ -190,7 +197,7 @@ function requirePlayer(
 }
 
 export type RoomAction =
-  | { type: "join"; name: string; playerId: string; token: string }
+  | { type: "join"; name: string; playerId: string; token: string; password?: string }
   | { type: "sync"; playerId: string; token: string }
   | { type: "chat"; playerId: string; token: string; text: string }
   | { type: "snowball"; playerId: string; token: string; targetId: string }

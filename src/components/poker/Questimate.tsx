@@ -2,6 +2,7 @@ import {
   Check,
   Copy,
   Crown,
+  LockKeyhole,
   LogOut,
   MessageCircle,
   Presentation,
@@ -35,6 +36,8 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
   const [lang, setLang] = useState<Lang>("ru");
   const [name, setName] = useState("");
   const [codeInput, setCodeInput] = useState(roomCode ?? "");
+  const [createPassword, setCreatePassword] = useState("");
+  const [joinPassword, setJoinPassword] = useState("");
   const [you, setYou] = useState<string | null>(null);
   const [state, setState] = useState<Snapshot | null>(null);
   const [busy, setBusy] = useState(false);
@@ -173,6 +176,12 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
       return;
     }
     const id = identity.current ?? getOrCreateIdentity();
+    const rawPassword = mode === "create" ? createPassword : forcedCode ? "" : joinPassword;
+    const password = rawPassword.trim() ? rawPassword : undefined;
+    if (password && password.length < 4) {
+      setError("password_too_short");
+      return;
+    }
     identity.current = id;
     saveName(nick);
     setBusy(true);
@@ -180,9 +189,9 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
     try {
       if (mode === "create") {
         const res = await createPokerRoomFn({
-          data: { name: nick, playerId: id.playerId, token: id.token },
+          data: { name: nick, playerId: id.playerId, token: id.token, password },
         });
-        applyResult(res);
+        if (applyResult(res)) setCreatePassword("");
       } else {
         const code = (forcedCode ?? codeInput).trim().toUpperCase();
         setCodeInput(code);
@@ -190,7 +199,15 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
           setError("invalid_code");
           return;
         }
-        await act({ type: "join", code, name: nick, playerId: id.playerId, token: id.token });
+        const joined = await act({
+          type: "join",
+          code,
+          name: nick,
+          playerId: id.playerId,
+          token: id.token,
+          password,
+        });
+        if (joined) setJoinPassword("");
       }
     } catch {
       setError("network");
@@ -229,11 +246,15 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
         t={t}
         name={name}
         codeInput={codeInput}
+        createPassword={createPassword}
+        joinPassword={joinPassword}
         invitedCode={roomCode}
         busy={busy}
         error={error}
         onName={setName}
         onCode={setCodeInput}
+        onCreatePassword={setCreatePassword}
+        onJoinPassword={setJoinPassword}
         onCreate={() => void enter("create")}
         onJoin={() => void enter("join")}
         onDemo={() => void enter("join", DEMO_CODE)}
@@ -273,6 +294,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
             }}
             aria-label={t.copy}
           >
+            {state.passwordProtected ? <LockKeyhole aria-label={t.protectedRoom} /> : null}
             <span>{state.code}</span>
             {copied ? <Check /> : <Copy />}
           </button>
@@ -546,6 +568,9 @@ function errorText(error: string, t: (typeof I18N)[Lang]): string {
   if (error === "name_required") return t.nameRequired;
   if (error === "invalid_code") return t.invalidRoom;
   if (error === "room_not_found") return t.roomMissing;
+  if (error === "password_required") return t.passwordRequired;
+  if (error === "wrong_password") return t.wrongPassword;
+  if (error === "password_too_short") return t.passwordTooShort;
   return t.actionFailed;
 }
 
@@ -554,11 +579,15 @@ function Lobby({
   t,
   name,
   codeInput,
+  createPassword,
+  joinPassword,
   invitedCode,
   busy,
   error,
   onName,
   onCode,
+  onCreatePassword,
+  onJoinPassword,
   onCreate,
   onJoin,
   onDemo,
@@ -568,11 +597,15 @@ function Lobby({
   t: (typeof I18N)[Lang];
   name: string;
   codeInput: string;
+  createPassword: string;
+  joinPassword: string;
   invitedCode?: string;
   busy: boolean;
   error: string | null;
   onName: (value: string) => void;
   onCode: (value: string) => void;
+  onCreatePassword: (value: string) => void;
+  onJoinPassword: (value: string) => void;
   onCreate: () => void;
   onJoin: () => void;
   onDemo: () => void;
@@ -653,10 +686,30 @@ function Lobby({
               if (event.key === "Enter") onCreate();
             }}
           />
+          <label className="field-label" htmlFor="create-password">
+            {t.createPassword}
+          </label>
+          <Input
+            id="create-password"
+            type="password"
+            value={createPassword}
+            minLength={4}
+            maxLength={128}
+            autoComplete="new-password"
+            placeholder={t.passwordPlaceholder}
+            onChange={(event) => onCreatePassword(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") onCreate();
+            }}
+          />
+          <p className="form-hint">{t.passwordHint}</p>
           <Button type="button" className="w-full" disabled={busy} onClick={onCreate}>
             {busy ? t.connecting : t.create}
           </Button>
           <p className="form-hint">{t.createHint}</p>
+          <p className="privacy-hint">
+            <LockKeyhole aria-hidden="true" /> {t.roomLifetime}
+          </p>
 
           <div className="join-divider">
             <span>{lang === "ru" ? "или по приглашению" : "or with an invite"}</span>
@@ -664,25 +717,34 @@ function Lobby({
           <label className="field-label" htmlFor="code">
             {t.roomCode}
           </label>
-          <div className="join-row">
-            <Input
-              id="code"
-              value={codeInput}
-              maxLength={5}
-              inputMode="text"
-              placeholder="ABC12"
-              className="room-input"
-              onChange={(event) =>
-                onCode(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))
-              }
-              onKeyDown={(event) => {
-                if (event.key === "Enter") onJoin();
-              }}
-            />
-            <Button type="button" variant="ghost" disabled={busy} onClick={onJoin}>
-              {t.join}
-            </Button>
-          </div>
+          <Input
+            id="code"
+            value={codeInput}
+            maxLength={5}
+            inputMode="text"
+            placeholder="ABC12"
+            className="room-input"
+            onChange={(event) => onCode(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ""))}
+          />
+          <label className="field-label" htmlFor="join-password">
+            {t.joinPassword}
+          </label>
+          <Input
+            id="join-password"
+            type="password"
+            value={joinPassword}
+            minLength={4}
+            maxLength={128}
+            autoComplete="current-password"
+            placeholder={t.passwordPlaceholder}
+            onChange={(event) => onJoinPassword(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") onJoin();
+            }}
+          />
+          <Button type="button" className="w-full" variant="ghost" disabled={busy} onClick={onJoin}>
+            {busy ? t.connecting : t.join}
+          </Button>
           <p className="form-hint">{t.joinHint}</p>
           {error ? (
             <div className="lobby-error" role="alert">

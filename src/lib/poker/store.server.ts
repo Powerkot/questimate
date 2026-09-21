@@ -12,6 +12,7 @@ import {
   snapshot,
   type RoomAction,
 } from "./engine";
+import { hashRoomPassword, verifyRoomPassword } from "./password.server";
 import type { PokerResult, StoredRoom } from "./types";
 
 function asRoom(raw: unknown): StoredRoom {
@@ -22,8 +23,11 @@ function asRoom(raw: unknown): StoredRoom {
 async function load(code: string): Promise<{ room: StoredRoom; version: number } | null> {
   const sql = await getSql();
   const rows = await sql.query<{ version: number; state: unknown }>(
-    `select version, state from poker_rooms where code = $1`,
-    [code],
+    `select version, state
+       from poker_rooms
+      where code = $1
+        and (code = $2 or created_at > now() - interval '24 hours')`,
+    [code, DEMO_CODE],
   );
   const row = rows[0];
   if (!row) return null;
@@ -61,11 +65,10 @@ async function remove(code: string): Promise<void> {
   await sql.query(`delete from poker_rooms where code = $1`, [code]);
 }
 
-async function maybeGc(): Promise<void> {
-  if (Math.random() > 0.03) return;
+async function purgeExpiredRooms(): Promise<void> {
   const sql = await getSql();
   await sql.query(
-    `delete from poker_rooms where code <> $1 and updated_at < now() - interval '24 hours'`,
+    `delete from poker_rooms where code <> $1 and created_at <= now() - interval '24 hours'`,
     [DEMO_CODE],
   );
 }
@@ -82,8 +85,9 @@ export async function createPokerRoom(input: {
   name: string;
   playerId: string;
   token: string;
+  password?: string;
 }): Promise<PokerResult> {
-  await maybeGc();
+  await purgeExpiredRooms();
   const name = input.name.trim().slice(0, 24) || "Host";
   const player = {
     id: input.playerId || makeId("p"),
@@ -92,10 +96,11 @@ export async function createPokerRoom(input: {
     lastSeen: now(),
     joinedAt: now(),
   };
+  const roomPassword = input.password ? await hashRoomPassword(input.password) : undefined;
   for (let i = 0; i < 8; i++) {
     const code = makeCode();
     if (code === DEMO_CODE) continue;
-    const room = createRoom(code, player);
+    const room = createRoom(code, player, { password: roomPassword });
     const ok = await insert(room);
     if (ok) return { ok: true, you: player.id, state: snapshot(room, player.id) };
   }
@@ -105,12 +110,18 @@ export async function createPokerRoom(input: {
 export async function handlePokerAction(
   action: RoomAction & { code: string },
 ): Promise<PokerResult> {
-  await maybeGc();
+  await purgeExpiredRooms();
   if (action.code === DEMO_CODE) await ensureDemoRoom();
   for (let attempt = 0; attempt < 6; attempt++) {
     const loaded = await load(action.code);
     if (!loaded) return { ok: false, error: "room_not_found" };
     const { room, version } = loaded;
+    if (action.type === "join" && room.password) {
+      if (!action.password) return { ok: false, error: "password_required" };
+      if (!(await verifyRoomPassword(action.password, room.password))) {
+        return { ok: false, error: "wrong_password" };
+      }
+    }
     const result = applyAction(room, action);
     if (!result.ok) return { ok: false, error: result.error };
     if (action.code === DEMO_CODE && action.type === "join") {
