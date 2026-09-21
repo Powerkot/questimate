@@ -475,14 +475,14 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
                   media="(max-width: 759px)"
                   srcSet={
                     tableMode === "round"
-                      ? "/room/table-round-v2-720.webp"
+                      ? "/room/tavern-reference-720.webp"
                       : "/room/table-long-720.webp"
                   }
                 />
                 <img
                   src={
                     tableMode === "round"
-                      ? "/room/table-round-v2-1200.webp"
+                      ? "/room/tavern-reference-1200.webp"
                       : "/room/table-long-1200.webp"
                   }
                   width="1200"
