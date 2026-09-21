@@ -1073,11 +1073,14 @@ function TaskCard({
   const clamp = long && collapsed;
   return (
     <article className="quest-card task-card">
-      <div className="task-scroll-copy">
-        <span className="eyebrow">{t.newTask}</span>
+      <span className="task-scroll-art" aria-hidden="true">
+        <img src="/room/task-scroll.webp" alt="" />
+      </span>
+      <div className="task-card-copy">
+        <span className="eyebrow">{t.currentTask}</span>
         <h1>{task.title}</h1>
         {task.description ? (
-          <p className={cn("task-copy", clamp && "line-clamp-3")}>{task.description}</p>
+          <p className={cn("task-copy", clamp && "is-clamped")}>{task.description}</p>
         ) : null}
         {long ? (
           <button type="button" className="text-link" onClick={onToggle}>
@@ -1085,9 +1088,10 @@ function TaskCard({
           </button>
         ) : null}
       </div>
-      <span className="task-seal" aria-hidden="true">
-        Q
-      </span>
+      <span className="task-corner task-corner-tl" aria-hidden="true" />
+      <span className="task-corner task-corner-tr" aria-hidden="true" />
+      <span className="task-corner task-corner-bl" aria-hidden="true" />
+      <span className="task-corner task-corner-br" aria-hidden="true" />
     </article>
   );
 }
