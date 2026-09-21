@@ -8,6 +8,7 @@ function player(id: string, vote: CardValue): PublicPlayer {
     id,
     name: id,
     isHost: id === "host",
+    online: true,
     voted: true,
     vote,
     variantId: null,

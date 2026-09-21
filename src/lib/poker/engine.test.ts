@@ -43,6 +43,65 @@ describe("poker engine", () => {
     }
   });
 
+  it("keeps an away player's seat and vote until they explicitly leave", () => {
+    const originalNow = Date.now;
+    try {
+      let time = 1_000;
+      Date.now = () => time;
+      const room = createRoom("ABCDE", stored("host01", "host-token", time));
+      applyAction(room, {
+        type: "join",
+        playerId: "guest01",
+        token: "guest-token",
+        name: "Guest",
+      });
+      room.task = { id: "task01", title: "Quest", description: "" };
+      applyAction(room, { type: "vote", playerId: "host01", token: "host-token", value: "s" });
+
+      time += 3 * 60_000;
+      const awayState = snapshot(room, "host01");
+      const guest = awayState.players.find((player) => player.id === "guest01");
+
+      assert.equal(awayState.players.length, 2);
+      assert.equal(guest?.online, false);
+      assert.equal(guest?.voted, false);
+      assert.equal(Object.keys(room.votes).length, 1);
+    } finally {
+      Date.now = originalNow;
+    }
+  });
+
+  it("resumes the same player after a mobile suspension without a password", () => {
+    const originalNow = Date.now;
+    try {
+      let time = 1_000;
+      Date.now = () => time;
+      const room = createRoom("ABCDE", stored("host01", "host-token", time), {
+        password: { salt: "salt", hash: "hash" },
+      });
+      room.task = { id: "task01", title: "Quest", description: "" };
+      applyAction(room, { type: "vote", playerId: "host01", token: "host-token", value: "m" });
+
+      time += 3 * 60_000;
+      assert.equal(snapshot(room, "host01").players[0].online, false);
+      assert.deepEqual(applyAction(room, { type: "resume", playerId: "host01", token: "wrong" }), {
+        ok: false,
+        error: "unauthorized",
+      });
+
+      const resumed = applyAction(room, {
+        type: "resume",
+        playerId: "host01",
+        token: "host-token",
+      });
+      assert.equal(resumed.ok, true);
+      assert.equal(snapshot(room, "host01").players[0].online, true);
+      assert.equal(room.votes.host01, "m");
+    } finally {
+      Date.now = originalNow;
+    }
+  });
+
   it("keeps a selected character variant stable for the round", () => {
     const room = createRoom("ABCDE", stored("host01", "host-token", Date.now()));
     assert.equal(

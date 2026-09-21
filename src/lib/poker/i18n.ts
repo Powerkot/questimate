@@ -35,6 +35,7 @@ type Dict = {
   host: string;
   voted: string;
   waiting: string;
+  away: string;
   expand: string;
   collapse: string;
   snow: string;
@@ -121,6 +122,7 @@ export const I18N: Record<Lang, Dict> = {
     host: "ведущий",
     voted: "карта на столе",
     waiting: "думает",
+    away: "отошёл",
     expand: "Развернуть",
     collapse: "Свернуть",
     snow: "Бросить снежок",
@@ -206,6 +208,7 @@ export const I18N: Record<Lang, Dict> = {
     host: "host",
     voted: "card on the table",
     waiting: "thinking",
+    away: "away",
     expand: "Expand",
     collapse: "Collapse",
     snow: "Throw a snowball",

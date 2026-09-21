@@ -21,7 +21,16 @@ import { Input, Textarea } from "@/components/ui/input";
 import { createPokerRoomFn, pokerActionFn, type PokerActionInput } from "@/lib/poker/actions";
 import { analyzeVotes } from "@/lib/poker/consensus";
 import { DEMO_CODE } from "@/lib/poker/engine";
-import { getOrCreateIdentity, loadLang, loadName, saveLang, saveName } from "@/lib/poker/identity";
+import {
+  clearLastRoom,
+  getOrCreateIdentity,
+  loadLang,
+  loadLastRoom,
+  loadName,
+  saveLang,
+  saveLastRoom,
+  saveName,
+} from "@/lib/poker/identity";
 import { I18N, chatText, type Lang } from "@/lib/poker/i18n";
 import { playHit, vibrateHit } from "@/lib/poker/sound";
 import { tableLayoutMode, tableSeatPosition } from "@/lib/poker/table-layout";
@@ -56,7 +65,10 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
   const [sideTab, setSideTab] = useState<"history" | "chat">("chat");
   const [mobilePane, setMobilePane] = useState<"table" | "chat" | "history">("table");
   const [presentation, setPresentation] = useState(false);
+  const [resumeCode, setResumeCode] = useState<string | null>(null);
+  const [restoring, setRestoring] = useState(true);
   const identity = useRef<{ playerId: string; token: string } | null>(null);
+  const restoreAttempted = useRef(false);
   const snowSeen = useRef(0);
   const codeRef = useRef<string | undefined>(undefined);
   const snapKey = useRef("");
@@ -67,10 +79,17 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
   codeRef.current = state?.code;
 
   useEffect(() => {
+    if (state) {
+      setRestoring(false);
+      return;
+    }
     identity.current = getOrCreateIdentity();
     setLang(loadLang());
     setName(loadName());
-  }, []);
+    const savedRoom = loadLastRoom();
+    if (savedRoom && (!roomCode || roomCode === savedRoom)) setResumeCode(savedRoom);
+    else setRestoring(false);
+  }, [roomCode, state]);
 
   useEffect(() => {
     if (!state && roomCode) setCodeInput(roomCode);
@@ -90,6 +109,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
       if (!res.ok) {
         if (!silent) setError(res.error);
         if (res.error === "room_not_found") {
+          clearLastRoom(codeRef.current ?? roomCode);
           setState(null);
           setYou(null);
           onRoomCode(undefined);
@@ -97,6 +117,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
         return false;
       }
       setYou(res.you);
+      saveLastRoom(res.state.code);
       const key = JSON.stringify(res.state);
       if (key !== snapKey.current) {
         snapKey.current = key;
@@ -111,7 +132,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
       }
       return true;
     },
-    [onRoomCode],
+    [onRoomCode, roomCode],
   );
 
   const act = useCallback(
@@ -127,6 +148,36 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
     [applyResult],
   );
   actRef.current = act;
+
+  useEffect(() => {
+    if (!resumeCode || restoreAttempted.current) return;
+    restoreAttempted.current = true;
+    const id = identity.current;
+    if (!id) {
+      setRestoring(false);
+      return;
+    }
+    const restore = async () => {
+      try {
+        const res = await pokerActionFn({
+          data: { type: "resume", code: resumeCode, playerId: id.playerId, token: id.token },
+        });
+        if (res.ok) applyResult(res, true, true);
+        else {
+          if (res.error === "room_not_found" || res.error === "unauthorized") {
+            clearLastRoom(resumeCode);
+            if (roomCode === resumeCode) onRoomCode(undefined);
+          }
+        }
+      } catch {
+        setError("network");
+      } finally {
+        setRestoring(false);
+        setResumeCode(null);
+      }
+    };
+    void restore();
+  }, [applyResult, onRoomCode, resumeCode, roomCode]);
 
   useEffect(() => {
     if (!you || !state?.code) return;
@@ -150,6 +201,28 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
+    };
+  }, [you, state?.code]);
+
+  useEffect(() => {
+    if (!you || !state?.code) return;
+    const syncNow = () => {
+      if (document.hidden) return;
+      const id = identity.current;
+      const code = codeRef.current;
+      if (!id || !code) return;
+      void actRef.current(
+        { type: "sync", code, playerId: id.playerId, token: id.token },
+        { silent: true },
+      );
+    };
+    document.addEventListener("visibilitychange", syncNow);
+    window.addEventListener("online", syncNow);
+    window.addEventListener("pageshow", syncNow);
+    return () => {
+      document.removeEventListener("visibilitychange", syncNow);
+      window.removeEventListener("online", syncNow);
+      window.removeEventListener("pageshow", syncNow);
     };
   }, [you, state?.code]);
 
@@ -229,6 +302,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
         { silent: true },
       );
     }
+    if (state) clearLastRoom(state.code);
     setState(null);
     setYou(null);
     setPicked(null);
@@ -244,6 +318,17 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
     () => (state ? analyzeVotes(state.players, state.revealed) : null),
     [state],
   );
+
+  if (restoring) {
+    return (
+      <main className="restore-screen" aria-live="polite">
+        <span className="brand-mark" aria-hidden="true">
+          Q
+        </span>
+        <p>{t.connecting}</p>
+      </main>
+    );
+  }
 
   if (!state || !you) {
     return (
@@ -1072,7 +1157,12 @@ function Seat({
   else if (revealed && player.vote) face = "front";
   return (
     <article
-      className={cn("player-seat", isYou && "is-you", outlier && revealed && "is-outlier")}
+      className={cn(
+        "player-seat",
+        isYou && "is-you",
+        !player.online && "is-away",
+        outlier && revealed && "is-outlier",
+      )}
       style={style}
     >
       <div className="player-meta">
@@ -1086,7 +1176,9 @@ function Seat({
           {snow ? " ☃" : ""}
         </button>
         <span>
-          {player.isHost ? (
+          {!player.online ? (
+            t.away
+          ) : player.isHost ? (
             <>
               <Crown /> {t.host}
             </>

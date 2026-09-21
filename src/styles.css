@@ -1331,6 +1331,27 @@
 }
 
 /* Tavern room */
+.restore-screen {
+  display: grid;
+  min-height: 100dvh;
+  place-content: center;
+  justify-items: center;
+  gap: 1rem;
+  background: radial-gradient(circle at 50% 38%, #263d5c55, transparent 19rem), #050a11;
+  color: #e5c777;
+  font-family: var(--font-display);
+  letter-spacing: 0.08em;
+}
+.restore-screen .brand-mark {
+  display: grid;
+  width: 3.4rem;
+  height: 3.4rem;
+  place-items: center;
+  border: 1px solid #dba735aa;
+  border-radius: 50%;
+  box-shadow: 0 0 30px #dba7352b;
+  font-size: 1.65rem;
+}
 .quest-app {
   min-height: 100dvh;
   background:
@@ -1555,6 +1576,23 @@
 }
 .party-table .player-seat.is-outlier .player-meta {
   border-color: var(--color-outlier);
+}
+.party-table .player-seat.is-away::before {
+  border-style: dashed;
+  filter: saturate(0.35);
+  opacity: 0.5;
+}
+.party-table .player-seat.is-away .player-meta {
+  border-style: dashed;
+  border-color: #b8a98a66;
+  background: linear-gradient(180deg, #171719e8, #080b10ee);
+}
+.party-table .player-seat.is-away .player-meta > span {
+  color: #d4b77a;
+}
+.party-table .player-seat.is-away .mc {
+  filter: grayscale(0.75) brightness(0.62);
+  opacity: 0.72;
 }
 .party-table .seat-grid.is-revealed .player-seat {
   align-items: center;

@@ -83,6 +83,7 @@ export type PublicPlayer = {
   id: string;
   name: string;
   isHost: boolean;
+  online: boolean;
   voted: boolean;
   vote: CardValue | null;
   variantId: string | null;

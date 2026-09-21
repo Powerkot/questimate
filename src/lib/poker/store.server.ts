@@ -8,7 +8,6 @@ import {
   makeId,
   normalizeRoom,
   now,
-  prunePlayers,
   snapshot,
   type RoomAction,
 } from "./engine";
@@ -128,13 +127,8 @@ export async function handlePokerAction(
       prepareDemoJoin(result.room, result.you);
     }
     const demoChanged = action.code === DEMO_CODE ? tickDemoRoom(result.room) : false;
-    if (action.type === "sync") {
-      const pruned = prunePlayers(result.room);
-      if (pruned.changed || demoChanged || result.persist) {
-        if (result.room.players.length === 0) {
-          await remove(action.code);
-          return { ok: false, error: "room_not_found" };
-        }
+    if (action.type === "sync" || action.type === "resume") {
+      if (demoChanged || result.persist) {
         const saved = await save(action.code, version, result.room);
         if (!saved) continue;
       }
