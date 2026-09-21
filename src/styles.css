@@ -1548,9 +1548,7 @@
   display: block;
   width: min(100%, 8.25rem);
   height: auto;
-  filter: drop-shadow(0 9px 8px #000b) saturate(0.93) contrast(1.04);
-  -webkit-mask-image: radial-gradient(ellipse 72% 75% at 50% 50%, #000 55%, transparent 100%);
-  mask-image: radial-gradient(ellipse 72% 75% at 50% 50%, #000 55%, transparent 100%);
+  filter: drop-shadow(0 9px 8px #000b);
   transform: translate(-50%, -50%);
 }
 .task-card-copy {
