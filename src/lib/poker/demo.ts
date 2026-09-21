@@ -1,4 +1,12 @@
-import { DEMO_CODE, DEMO_SNOW_AFTER_MS, now, selectVariantId, throwSnowball } from "./engine.ts";
+import {
+  DEMO_CODE,
+  DEMO_SNOW_AFTER_MS,
+  makeId,
+  now,
+  randomCardBackId,
+  selectVariantId,
+  throwSnowball,
+} from "./engine.ts";
 import type { CardValue, ChatEntry, HistoryEntry, StoredPlayer, StoredRoom } from "./types.ts";
 
 export const DEMO_BOTS: { id: string; name: string; token: string; vote: CardValue }[] = [
@@ -8,6 +16,13 @@ export const DEMO_BOTS: { id: string; name: string; token: string; vote: CardVal
   { id: "botilya", name: "Илья", token: "demo-token-ilya", vote: "m" },
   { id: "botkaty", name: "Катя", token: "demo-token-katy", vote: "s" },
 ];
+
+const DEMO_TASK = {
+  id: "t-demo-now",
+  title: "Нагрузка на платёжный шлюз при Black Friday",
+  description:
+    "Оцените работу на пике: x12 к обычному трафику, очередь ретраев, таймауты антифрода и деградация вместо падения кассы.\n\nНужно понять, хватит ли текущего лимита на эквайере, не упрёмся ли в синхронный вызов скоринга и что будет, если провайдер начнёт отдавать 429.\n\nВ оценку закладываем: нагрузку, наблюдаемость, рубильник и откат. Не закладываем редизайн админки и новые методы оплаты.",
+};
 
 function ago(ms: number): number {
   return now() - ms;
@@ -241,18 +256,14 @@ export function buildDemoRoom(): StoredRoom {
 
   const room: StoredRoom = {
     code: DEMO_CODE,
+    cardBackId: randomCardBackId(),
     hostId: "botolga",
     players,
-    task: {
-      id: "t-demo-now",
-      title: "Нагрузка на платёжный шлюз при Black Friday",
-      description:
-        "Оцените работу на пике: x12 к обычному трафику, очередь ретраев, таймауты антифрода и деградация вместо падения кассы.\n\nНужно понять, хватит ли текущего лимита на эквайере, не упрёмся ли в синхронный вызов скоринга и что будет, если провайдер начнёт отдавать 429.\n\nВ оценку закладываем: нагрузку, наблюдаемость, рубильник и откат. Не закладываем редизайн админки и новые методы оплаты.",
-    },
+    task: { ...DEMO_TASK },
     votes,
     roundId,
     variants: {},
-    revealed: true,
+    revealed: false,
     history,
     chat,
     snowUntil: {},
@@ -262,6 +273,26 @@ export function buildDemoRoom(): StoredRoom {
     room.variants[playerId] = selectVariantId(room, playerId, value);
   }
   return room;
+}
+
+/** Start every demo visit in an interactive round controlled by the visitor. */
+export function prepareDemoJoin(room: StoredRoom, playerId: string): void {
+  room.hostId = playerId;
+  room.revealed = false;
+  delete room.votes[playerId];
+  delete room.variants[playerId];
+
+  if (!room.task) {
+    room.task = { ...DEMO_TASK };
+    room.roundId = makeId("r");
+    room.votes = {};
+    room.variants = {};
+  }
+
+  for (const demoBot of DEMO_BOTS) {
+    room.votes[demoBot.id] = demoBot.vote;
+    room.variants[demoBot.id] = selectVariantId(room, demoBot.id, demoBot.vote);
+  }
 }
 
 export function tickDemoRoom(room: StoredRoom): boolean {

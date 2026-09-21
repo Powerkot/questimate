@@ -6,15 +6,17 @@ const id = z.string().regex(/^[a-zA-Z0-9_-]{6,48}$/);
 const token = z.string().min(8).max(64);
 const code = z.string().regex(/^[A-Z0-9]{5}$/);
 const name = z.string().max(24);
+const password = z.string().min(4).max(128).optional();
 
 const createSchema = z.object({
   name,
   playerId: id,
   token,
+  password,
 });
 
 const actionSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("join"), code, name, playerId: id, token }),
+  z.object({ type: z.literal("join"), code, name, playerId: id, token, password }),
   z.object({ type: z.literal("sync"), code, playerId: id, token }),
   z.object({ type: z.literal("chat"), code, playerId: id, token, text: z.string().max(400) }),
   z.object({

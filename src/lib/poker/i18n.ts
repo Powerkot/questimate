@@ -6,6 +6,15 @@ type Dict = {
   kicker: string;
   lede: string;
   yourName: string;
+  createPassword: string;
+  joinPassword: string;
+  passwordPlaceholder: string;
+  passwordHint: string;
+  roomLifetime: string;
+  passwordRequired: string;
+  wrongPassword: string;
+  passwordTooShort: string;
+  protectedRoom: string;
   create: string;
   join: string;
   copy: string;
@@ -83,6 +92,15 @@ export const I18N: Record<Lang, Dict> = {
     kicker: APP_DOMAIN,
     lede: "Оцените задачу вместе. Пока ведущий не откроет стол, карты лежат рубашкой вверх.",
     yourName: "Ваше имя",
+    createPassword: "Пароль новой комнаты — необязательно",
+    joinPassword: "Пароль комнаты — если установлен",
+    passwordPlaceholder: "Минимум 4 символа",
+    passwordHint: "Сам пароль не хранится — только защищённый хеш.",
+    roomLifetime: "Комната и вся её история удаляются через 24 часа после создания.",
+    passwordRequired: "Эта комната защищена паролем.",
+    wrongPassword: "Неверный пароль комнаты.",
+    passwordTooShort: "Пароль должен содержать не менее 4 символов.",
+    protectedRoom: "Комната защищена паролем",
     create: "Создать комнату",
     join: "Войти",
     copy: "копировать ссылку",
@@ -159,6 +177,15 @@ export const I18N: Record<Lang, Dict> = {
     kicker: APP_DOMAIN,
     lede: "Estimate together. Cards stay face-down until the host opens the table.",
     yourName: "Your name",
+    createPassword: "New room password — optional",
+    joinPassword: "Room password — if protected",
+    passwordPlaceholder: "At least 4 characters",
+    passwordHint: "The password itself is never stored — only a secure hash.",
+    roomLifetime: "The room and its entire history are deleted 24 hours after creation.",
+    passwordRequired: "This room is password-protected.",
+    wrongPassword: "Incorrect room password.",
+    passwordTooShort: "A password must contain at least 4 characters.",
+    protectedRoom: "Password-protected room",
     create: "Create room",
     join: "Join",
     copy: "copy link",
