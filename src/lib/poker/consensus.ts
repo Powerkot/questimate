@@ -40,9 +40,9 @@ export function analyzeVotes(players: PublicPlayer[], revealed: boolean): Consen
     .map((p) => ({ ...p, rank: SIZE_RANK[p.vote] }))
     .sort((a, b) => a.rank - b.rank);
 
-  let median = "\u2014";
-  let mean = "\u2014";
-  let range = "\u2014";
+  let median = "—";
+  let mean = "—";
+  let range = "—";
   if (sized.length) {
     const mid = Math.floor((sized.length - 1) / 2);
     const medRank =
@@ -50,7 +50,7 @@ export function analyzeVotes(players: PublicPlayer[], revealed: boolean): Consen
     median = RANK_SIZE[Math.round(medRank)] || String(medRank);
     const avg = sized.reduce((s, p) => s + p.rank, 0) / sized.length;
     mean = (Math.round(avg * 10) / 10).toFixed(1);
-    range = `${RANK_SIZE[sized[0].rank]}\u2013${RANK_SIZE[sized[sized.length - 1].rank]}`;
+    range = `${RANK_SIZE[sized[0].rank]}–${RANK_SIZE[sized[sized.length - 1].rank]}`;
   }
 
   const level = consensusPct >= 80 ? "high" : consensusPct >= 50 ? "medium" : "low";

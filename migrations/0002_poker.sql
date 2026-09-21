@@ -1,4 +1,4 @@
--- QUESTIMATE rooms. Unowned session state (no accounts): code + nick only.
+-- Party Poker rooms. Unowned session state (no accounts): code + nick only.
 create table if not exists poker_rooms (
   code       text primary key,
   version    integer not null default 0,
