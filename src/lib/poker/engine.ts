@@ -12,7 +12,8 @@ import { analyzeVotes } from "./consensus.ts";
 
 export const DEMO_CODE = "RAID1";
 export const DEMO_SNOW_AFTER_MS = 12_000;
-const STALE_MS = 75_000;
+export const PRESENCE_AWAY_MS = 30_000;
+const PLAYER_RETENTION_MS = 24 * 60 * 60_000;
 const HEARTBEAT_WRITE_MS = 15_000;
 const CHAT_CAP = 300;
 
@@ -107,6 +108,7 @@ export function snapshot(room: StoredRoom, viewerId: string): Snapshot {
       id: p.id,
       name: p.name,
       isHost: p.id === room.hostId,
+      online: Boolean(p.bot) || t - p.lastSeen <= PRESENCE_AWAY_MS,
       voted: Boolean(room.votes[p.id]),
       vote: room.revealed || p.id === viewerId ? (room.votes[p.id] ?? null) : null,
       variantId:
@@ -158,29 +160,20 @@ export function createRoom(
   return room;
 }
 
-export function prunePlayers(room: StoredRoom): { changed: boolean; left: string[] } {
-  const t = now();
-  const left: string[] = [];
-  const keep: StoredPlayer[] = [];
-  for (const p of room.players) {
-    if (p.bot) {
-      keep.push(p);
-      continue;
-    }
-    if (t - p.lastSeen > STALE_MS) left.push(p.id);
-    else keep.push(p);
-  }
-  if (!left.length) return { changed: false, left };
-  room.players = keep;
-  for (const id of left) {
+function expireAbandonedPlayers(room: StoredRoom): void {
+  const cutoff = now() - PLAYER_RETENTION_MS;
+  const expired = room.players.filter((player) => !player.bot && player.lastSeen < cutoff);
+  if (!expired.length) return;
+  const expiredIds = new Set(expired.map((player) => player.id));
+  room.players = room.players.filter((player) => !expiredIds.has(player.id));
+  for (const id of expiredIds) {
     delete room.votes[id];
     delete room.variants[id];
     delete room.snowUntil[id];
   }
-  if (keep.length && !keep.some((p) => p.id === room.hostId)) {
-    room.hostId = keep[0].id;
+  if (!room.players.some((player) => player.id === room.hostId)) {
+    room.hostId = room.players[0]?.id ?? "";
   }
-  return { changed: true, left };
 }
 
 function requirePlayer(
@@ -198,6 +191,7 @@ function requirePlayer(
 
 export type RoomAction =
   | { type: "join"; name: string; playerId: string; token: string; password?: string }
+  | { type: "resume"; playerId: string; token: string }
   | { type: "sync"; playerId: string; token: string }
   | { type: "chat"; playerId: string; token: string; text: string }
   | { type: "snowball"; playerId: string; token: string; targetId: string }
@@ -226,7 +220,7 @@ export type ApplyResult =
 
 export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
   normalizeRoom(room);
-  prunePlayers(room);
+  expireAbandonedPlayers(room);
 
   if (action.type === "join") {
     const name = action.name.trim().slice(0, 24) || "Player";
@@ -262,7 +256,7 @@ export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
   const { player: me, heartbeatDue } = auth;
   const isHost = me.id === room.hostId;
 
-  if (action.type === "sync") {
+  if (action.type === "sync" || action.type === "resume") {
     return { ok: true, room, you: me.id, persist: heartbeatDue };
   }
 

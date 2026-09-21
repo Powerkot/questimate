@@ -17,6 +17,7 @@ const createSchema = z.object({
 
 const actionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("join"), code, name, playerId: id, token, password }),
+  z.object({ type: z.literal("resume"), code, playerId: id, token }),
   z.object({ type: z.literal("sync"), code, playerId: id, token }),
   z.object({ type: z.literal("chat"), code, playerId: id, token, text: z.string().max(400) }),
   z.object({

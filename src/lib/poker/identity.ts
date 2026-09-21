@@ -2,6 +2,7 @@ const ID_KEY = "pp-player-id";
 const TOKEN_KEY = "pp-token";
 const NAME_KEY = "pp-name";
 const LANG_KEY = "pp-lang";
+const ROOM_KEY = "pp-last-room";
 
 function randomPart(): string {
   const bytes = new Uint8Array(12);
@@ -10,15 +11,32 @@ function randomPart(): string {
 }
 
 export function getOrCreateIdentity(): { playerId: string; token: string } {
-  let playerId = sessionStorage.getItem(ID_KEY);
-  let token = sessionStorage.getItem(TOKEN_KEY);
+  let playerId = localStorage.getItem(ID_KEY) || sessionStorage.getItem(ID_KEY);
+  let token = localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
   if (!playerId || !token) {
     playerId = `p_${randomPart()}`.slice(0, 24);
     token = `${randomPart()}${randomPart()}`.slice(0, 48);
-    sessionStorage.setItem(ID_KEY, playerId);
-    sessionStorage.setItem(TOKEN_KEY, token);
   }
+  localStorage.setItem(ID_KEY, playerId);
+  localStorage.setItem(TOKEN_KEY, token);
+  sessionStorage.removeItem(ID_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
   return { playerId, token };
+}
+
+export function loadLastRoom(): string | null {
+  const code = (localStorage.getItem(ROOM_KEY) || "").trim().toUpperCase();
+  return /^[A-Z0-9]{5}$/.test(code) ? code : null;
+}
+
+export function saveLastRoom(code: string): void {
+  const normalized = code.trim().toUpperCase();
+  if (/^[A-Z0-9]{5}$/.test(normalized)) localStorage.setItem(ROOM_KEY, normalized);
+}
+
+export function clearLastRoom(code?: string): void {
+  if (code && loadLastRoom() !== code.trim().toUpperCase()) return;
+  localStorage.removeItem(ROOM_KEY);
 }
 
 export function loadName(): string {
