@@ -1,22 +1,27 @@
-import { RANK_SIZE, SCALE, SIZE_RANK, type CardValue, type PublicPlayer } from "./types";
+import { SIZE_RANK, type CardValue, type PublicPlayer } from "./types.ts";
 
 export type Consensus = {
   values: CardValue[];
   mode: CardValue;
   consensusPct: number;
   median: string;
-  mean: string;
   range: string;
   level: "high" | "medium" | "low";
   outliers: PublicPlayer[];
   askOrder: PublicPlayer[];
   far: PublicPlayer | null;
   sized: PublicPlayer[];
+  specials: PublicPlayer[];
 };
 
-function scaleIndex(v: string): number {
-  const i = SCALE.indexOf(v as CardValue);
-  return i < 0 ? 99 : i;
+function mostCommon(values: CardValue[]): CardValue {
+  const counts = new Map<CardValue, number>();
+  for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
+  return [...counts.entries()].sort((a, b) => {
+    const countDiff = b[1] - a[1];
+    if (countDiff) return countDiff;
+    return (SIZE_RANK[a[0]] || 99) - (SIZE_RANK[b[0]] || 99);
+  })[0][0];
 }
 
 export function analyzeVotes(players: PublicPlayer[], revealed: boolean): Consensus | null {
@@ -24,68 +29,49 @@ export function analyzeVotes(players: PublicPlayer[], revealed: boolean): Consen
   const ballots = players.filter((p): p is PublicPlayer & { vote: CardValue } => Boolean(p.vote));
   if (!ballots.length) return null;
 
-  const values = ballots
-    .map((p) => p.vote)
-    .sort((a, b) => scaleIndex(a) - scaleIndex(b));
-
-  const counts: Record<string, number> = {};
-  for (const v of values) counts[v] = (counts[v] || 0) + 1;
-  const mode = Object.entries(counts).sort(
-    (a, b) => b[1] - a[1] || (SIZE_RANK[b[0]] || 0) - (SIZE_RANK[a[0]] || 0),
-  )[0][0] as CardValue;
-  const consensusPct = Math.round((counts[mode] / values.length) * 100);
-
   const sized = ballots
-    .filter((p) => SIZE_RANK[p.vote])
-    .map((p) => ({ ...p, rank: SIZE_RANK[p.vote] }))
-    .sort((a, b) => a.rank - b.rank);
+    .filter((p) => Boolean(SIZE_RANK[p.vote]))
+    .slice()
+    .sort((a, b) => SIZE_RANK[a.vote] - SIZE_RANK[b.vote]);
+  const specials = ballots.filter((p) => !SIZE_RANK[p.vote]);
+  const source = sized.length ? sized : ballots;
+  const mode = mostCommon(source.map((p) => p.vote));
+  const modeCount = source.filter((p) => p.vote === mode).length;
+  const consensusPct = Math.round((modeCount / source.length) * 100);
 
   let median = "—";
-  let mean = "—";
   let range = "—";
   if (sized.length) {
-    const mid = Math.floor((sized.length - 1) / 2);
-    const medRank =
-      sized.length % 2 ? sized[mid].rank : (sized[mid].rank + sized[mid + 1].rank) / 2;
-    median = RANK_SIZE[Math.round(medRank)] || String(medRank);
-    const avg = sized.reduce((s, p) => s + p.rank, 0) / sized.length;
-    mean = (Math.round(avg * 10) / 10).toFixed(1);
-    range = `${RANK_SIZE[sized[0].rank]}–${RANK_SIZE[sized[sized.length - 1].rank]}`;
+    const left = sized[Math.floor((sized.length - 1) / 2)].vote;
+    const right = sized[Math.ceil((sized.length - 1) / 2)].vote;
+    median = left === right ? left : `${left}–${right}`;
+    range = `${sized[0].vote}–${sized[sized.length - 1].vote}`;
   }
 
+  const modeRank = SIZE_RANK[mode] || 0;
+  const differing = modeRank ? sized.filter((p) => p.vote !== mode) : [];
+  const maxDistance = differing.length
+    ? Math.max(...differing.map((p) => Math.abs(SIZE_RANK[p.vote] - modeRank)))
+    : 0;
+  const outliers = differing.filter((p) => Math.abs(SIZE_RANK[p.vote] - modeRank) === maxDistance);
+  const askOrder = outliers.slice().sort((a, b) => SIZE_RANK[b.vote] - SIZE_RANK[a.vote]);
+  const far = askOrder[0] ?? null;
   const level = consensusPct >= 80 ? "high" : consensusPct >= 50 ? "medium" : "low";
-  const outliers = ballots.filter((p) => p.vote !== mode);
-
-  const sizedOutliers = sized.filter((p) => p.vote !== mode);
-  const maxRank = sizedOutliers.length ? Math.max(...sizedOutliers.map((p) => p.rank)) : 0;
-  const minRank = sizedOutliers.length ? Math.min(...sizedOutliers.map((p) => p.rank)) : 0;
-  const highs = sizedOutliers.filter((p) => p.rank === maxRank);
-  const lows = sizedOutliers.filter((p) => p.rank === minRank && p.rank !== maxRank);
-  const midOut = sizedOutliers.filter((p) => p.rank !== maxRank && p.rank !== minRank);
-  const specials = outliers.filter((p) => !SIZE_RANK[p.vote]);
-  const seen = new Set<string>();
-  const askOrder: PublicPlayer[] = [];
-  for (const p of [...highs, ...lows, ...midOut, ...specials]) {
-    if (seen.has(p.id)) continue;
-    seen.add(p.id);
-    askOrder.push(p);
-  }
-
-  const far =
-    outliers.slice().sort((a, b) => (SIZE_RANK[b.vote] || 0) - (SIZE_RANK[a.vote] || 0))[0] ??
-    null;
+  const values = ballots
+    .map((p) => p.vote)
+    .sort((a, b) => (SIZE_RANK[a] || 99) - (SIZE_RANK[b] || 99));
 
   return {
     values,
     mode,
     consensusPct,
     median,
-    mean,
     range,
     level,
     outliers,
     askOrder,
     far,
     sized,
+    specials,
   };
 }

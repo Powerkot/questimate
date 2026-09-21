@@ -5,11 +5,14 @@ import {
   type Snapshot,
   type StoredPlayer,
   type StoredRoom,
-} from "./types";
+} from "./types.ts";
+import { cardVariantIds } from "./cards.ts";
+import { analyzeVotes } from "./consensus.ts";
 
 export const DEMO_CODE = "RAID1";
 export const DEMO_SNOW_AFTER_MS = 12_000;
-const STALE_MS = 45_000;
+const STALE_MS = 75_000;
+const HEARTBEAT_WRITE_MS = 15_000;
 const CHAT_CAP = 300;
 
 export function now(): number {
@@ -17,18 +20,45 @@ export function now(): number {
 }
 
 export function makeId(prefix: string): string {
-  return `${prefix}_${Math.random().toString(36).slice(2, 10)}${Math.random().toString(36).slice(2, 6)}`;
+  return `${prefix}_${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`;
 }
 
 export function makeCode(): string {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = new Uint8Array(5);
+  crypto.getRandomValues(bytes);
   let s = "";
-  for (let i = 0; i < 5; i++) s += alphabet[Math.floor(Math.random() * alphabet.length)];
+  for (const byte of bytes) s += alphabet[byte % alphabet.length];
   return s;
 }
 
 export function isCard(value: unknown): value is CardValue {
   return typeof value === "string" && (SCALE as readonly string[]).includes(value);
+}
+
+function stableHash(value: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+export function selectVariantId(
+  room: Pick<StoredRoom, "code" | "task" | "roundId">,
+  playerId: string,
+  value: CardValue,
+): string {
+  const pool = cardVariantIds(value);
+  const seed = `${room.code}:${room.task?.id ?? "no-task"}:${room.roundId}:${playerId}:${value}`;
+  return pool[stableHash(seed) % pool.length];
+}
+
+export function normalizeRoom(room: StoredRoom): StoredRoom {
+  room.roundId ||= room.task?.id ?? makeId("r");
+  room.variants ||= {};
+  return room;
 }
 
 function pushChat(room: StoredRoom, entry: ChatEntry): void {
@@ -53,6 +83,7 @@ export function throwSnowball(room: StoredRoom, from: StoredPlayer, target: Stor
 }
 
 export function snapshot(room: StoredRoom, viewerId: string): Snapshot {
+  normalizeRoom(room);
   const t = now();
   return {
     code: room.code,
@@ -62,12 +93,16 @@ export function snapshot(room: StoredRoom, viewerId: string): Snapshot {
       name: p.name,
       isHost: p.id === room.hostId,
       voted: Boolean(room.votes[p.id]),
-      vote:
-        room.revealed || p.id === viewerId ? (room.votes[p.id] ?? null) : null,
+      vote: room.revealed || p.id === viewerId ? (room.votes[p.id] ?? null) : null,
+      variantId:
+        room.revealed && room.votes[p.id]
+          ? (room.variants[p.id] ?? selectVariantId(room, p.id, room.votes[p.id]))
+          : null,
       snowUntil: room.snowUntil[p.id] && room.snowUntil[p.id] > t ? room.snowUntil[p.id] : 0,
     })),
     task: room.task,
     revealed: room.revealed,
+    roundId: room.roundId,
     votesCount: Object.keys(room.votes).length,
     scale: SCALE,
     history: room.history,
@@ -82,6 +117,8 @@ export function createRoom(code: string, player: StoredPlayer): StoredRoom {
     players: [player],
     task: null,
     votes: {},
+    roundId: makeId("r"),
+    variants: {},
     revealed: false,
     history: [],
     chat: [],
@@ -113,6 +150,7 @@ export function prunePlayers(room: StoredRoom): { changed: boolean; left: string
   room.players = keep;
   for (const id of left) {
     delete room.votes[id];
+    delete room.variants[id];
     delete room.snowUntil[id];
   }
   if (keep.length && !keep.some((p) => p.id === room.hostId)) {
@@ -121,11 +159,17 @@ export function prunePlayers(room: StoredRoom): { changed: boolean; left: string
   return { changed: true, left };
 }
 
-function requirePlayer(room: StoredRoom, playerId: string, token: string): StoredPlayer | null {
+function requirePlayer(
+  room: StoredRoom,
+  playerId: string,
+  token: string,
+): { player: StoredPlayer; heartbeatDue: boolean } | null {
   const p = room.players.find((x) => x.id === playerId);
   if (!p || p.token !== token) return null;
-  p.lastSeen = now();
-  return p;
+  const seenAt = now();
+  const heartbeatDue = seenAt - p.lastSeen >= HEARTBEAT_WRITE_MS;
+  p.lastSeen = seenAt;
+  return { player: p, heartbeatDue };
 }
 
 export type RoomAction =
@@ -142,15 +186,22 @@ export type RoomAction =
       type: "ask-outliers";
       playerId: string;
       token: string;
-      order: { id: string; name: string; vote: string }[];
     }
   | { type: "leave"; playerId: string; token: string };
 
 export type ApplyResult =
-  | { ok: true; room: StoredRoom; you: string; empty?: boolean; hit?: { targetId: string } }
+  | {
+      ok: true;
+      room: StoredRoom;
+      you: string;
+      empty?: boolean;
+      persist?: boolean;
+      hit?: { targetId: string };
+    }
   | { ok: false; error: "unauthorized" | "invalid" };
 
 export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
+  normalizeRoom(room);
   prunePlayers(room);
 
   if (action.type === "join") {
@@ -182,17 +233,19 @@ export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
     return { ok: true, room, you: player.id };
   }
 
-  const me = requirePlayer(room, action.playerId, action.token);
-  if (!me) return { ok: false, error: "unauthorized" };
+  const auth = requirePlayer(room, action.playerId, action.token);
+  if (!auth) return { ok: false, error: "unauthorized" };
+  const { player: me, heartbeatDue } = auth;
   const isHost = me.id === room.hostId;
 
   if (action.type === "sync") {
-    return { ok: true, room, you: me.id };
+    return { ok: true, room, you: me.id, persist: heartbeatDue };
   }
 
   if (action.type === "leave") {
     room.players = room.players.filter((p) => p.id !== me.id);
     delete room.votes[me.id];
+    delete room.variants[me.id];
     delete room.snowUntil[me.id];
     if (room.players.length === 0) return { ok: true, room, you: me.id, empty: true };
     if (room.hostId === me.id) room.hostId = room.players[0].id;
@@ -240,8 +293,10 @@ export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
   }
 
   if (action.type === "vote") {
-    if (!room.task || room.revealed || !isCard(action.value)) return { ok: false, error: "invalid" };
+    if (!room.task || room.revealed || !isCard(action.value))
+      return { ok: false, error: "invalid" };
     room.votes[me.id] = action.value;
+    room.variants[me.id] = selectVariantId(room, me.id, action.value);
     return { ok: true, room, you: me.id };
   }
 
@@ -252,6 +307,8 @@ export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
     if (!title) return { ok: false, error: "invalid" };
     room.task = { id: makeId("t"), title, description };
     room.votes = {};
+    room.roundId = makeId("r");
+    room.variants = {};
     room.revealed = false;
     pushChat(room, {
       id: makeId("c"),
@@ -272,6 +329,8 @@ export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
   if (action.type === "revote") {
     if (!isHost || !room.task) return { ok: false, error: "unauthorized" };
     room.votes = {};
+    room.roundId = makeId("r");
+    room.variants = {};
     room.revealed = false;
     pushChat(room, {
       id: makeId("c"),
@@ -295,6 +354,7 @@ export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
       votes: Object.entries(room.votes).map(([id, value]) => ({
         name: room.players.find((p) => p.id === id)?.name || "?",
         value,
+        variantId: room.variants[id] ?? selectVariantId(room, id, value),
       })),
       ts: now(),
     });
@@ -308,19 +368,20 @@ export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
     });
     room.task = null;
     room.votes = {};
+    room.roundId = makeId("r");
+    room.variants = {};
     room.revealed = false;
     return { ok: true, room, you: me.id };
   }
 
   if (action.type === "ask-outliers") {
+    if (!isHost) return { ok: false, error: "unauthorized" };
     if (!room.task || !room.revealed) return { ok: false, error: "invalid" };
-    const clean = action.order
-      .slice(0, 12)
-      .map((p) => ({
-        name: String(p.name || room.players.find((x) => x.id === p.id)?.name || "").slice(0, 24),
-        vote: String(p.vote || ""),
-      }))
-      .filter((p) => p.name);
+    const analysis = analyzeVotes(snapshot(room, me.id).players, true);
+    const clean = (analysis?.askOrder ?? []).slice(0, 12).map((p) => ({
+      name: p.name.slice(0, 24),
+      vote: String(p.vote || ""),
+    }));
     if (!clean.length) return { ok: false, error: "invalid" };
     const parts = clean.map((p) => `${p.name} (${p.vote})`);
     let text: string;

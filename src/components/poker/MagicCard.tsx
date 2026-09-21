@@ -3,11 +3,12 @@ import type { Lang } from "@/lib/poker/i18n";
 import type { CardValue } from "@/lib/poker/types";
 import { cn } from "@/lib/cn";
 
-type Size = "seat" | "deck" | "mini";
+type Size = "seat" | "deck" | "mini" | "hero";
 type Face = "back" | "front" | "empty";
 
 type Props = {
   value?: CardValue | string | null;
+  variantId?: string | null;
   face: Face;
   lang?: Lang;
   size?: Size;
@@ -19,6 +20,7 @@ type Props = {
 
 export function MagicCard({
   value,
+  variantId,
   face,
   lang = "ru",
   size = "seat",
@@ -27,7 +29,7 @@ export function MagicCard({
   disabled,
   onClick,
 }: Props) {
-  const lore = cardLore(value);
+  const lore = cardLore(value, variantId);
   const label = lore
     ? `${value} — ${lore.name[lang]}, ${lore.title[lang]}`
     : face === "back"
@@ -38,6 +40,7 @@ export function MagicCard({
     size === "seat" && "mc-seat",
     size === "deck" && "mc-deck",
     size === "mini" && "mc-mini",
+    size === "hero" && "mc-hero",
     face === "front" && "is-face",
     face === "empty" && "is-empty",
     selected && "is-selected",
@@ -49,19 +52,17 @@ export function MagicCard({
   const inner = (
     <span className="mc-inner">
       <span className="mc-side mc-back">
-        <img src={CARD_BACK} alt="" draggable={false} />
+        <img src={CARD_BACK} alt="" draggable={false} loading="lazy" />
       </span>
       <span className="mc-side mc-front">
         {lore ? (
           <>
-            <img src={lore.art} alt="" draggable={false} />
-            <span className="mc-value">{value}</span>
-            {size !== "mini" ? (
-              <span className="mc-caption">
-                <span className="mc-name">{lore.name[lang]}</span>
-                {size === "seat" ? <span className="mc-title">{lore.title[lang]}</span> : null}
-              </span>
-            ) : null}
+            <img
+              src={lore.art}
+              alt=""
+              draggable={false}
+              loading={size === "deck" ? "eager" : "lazy"}
+            />
           </>
         ) : (
           <span className="mc-blank">—</span>
@@ -93,11 +94,24 @@ export function MagicCard({
   );
 }
 
-export function MiniFaces({ values, lang }: { values: string[]; lang: Lang }) {
+export function MiniFaces({
+  values,
+  lang,
+}: {
+  values: { value: string; variantId?: string | null }[];
+  lang: Lang;
+}) {
   return (
     <div className="flex flex-wrap items-end gap-1.5">
-      {values.map((v, i) => (
-        <MagicCard key={`${v}-${i}`} value={v} face="front" size="mini" lang={lang} />
+      {values.map((item, i) => (
+        <MagicCard
+          key={`${item.value}-${item.variantId ?? "base"}-${i}`}
+          value={item.value}
+          variantId={item.variantId}
+          face="front"
+          size="mini"
+          lang={lang}
+        />
       ))}
     </div>
   );
