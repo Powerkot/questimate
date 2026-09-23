@@ -1498,15 +1498,17 @@ function Seat({
         </button>
         <span>{!player.online ? t.away : player.voted ? t.voted : t.waiting}</span>
       </div>
-      <MagicCard
-        value={player.vote}
-        variantId={player.variantId}
-        backId={backId}
-        face={face}
-        size={revealed ? "hero" : "seat"}
-        lang={lang}
-        outlier={outlier && revealed}
-      />
+      <div className="table-card-stage">
+        <MagicCard
+          value={player.vote}
+          variantId={player.variantId}
+          backId={backId}
+          face={face}
+          size={revealed ? "hero" : "seat"}
+          lang={lang}
+          outlier={outlier && revealed}
+        />
+      </div>
     </article>
   );
 }
