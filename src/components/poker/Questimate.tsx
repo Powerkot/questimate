@@ -806,7 +806,13 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
       </div>
 
       {analysis && voteShowcaseOpen ? (
-        <VoteShowcase analysis={analysis} lang={lang} t={t} onClose={closeVoteShowcase} />
+        <VoteShowcase
+          analysis={analysis}
+          backId={state.cardBackId}
+          lang={lang}
+          t={t}
+          onClose={closeVoteShowcase}
+        />
       ) : null}
 
       {finalReveal ? (
@@ -868,11 +874,13 @@ function BrandLockup({ tagline }: { tagline?: string }) {
 
 function VoteShowcase({
   analysis,
+  backId,
   lang,
   t,
   onClose,
 }: {
   analysis: NonNullable<ReturnType<typeof analyzeVotes>>;
+  backId: string;
   lang: Lang;
   t: (typeof I18N)[Lang];
   onClose: () => void;
@@ -920,6 +928,7 @@ function VoteShowcase({
           role="majority"
           entry={showcase.majority}
           label={t.majorityChose}
+          backId={backId}
           lang={lang}
         />
         {showcase.minimum ? (
@@ -927,6 +936,7 @@ function VoteShowcase({
             role="minimum"
             entry={showcase.minimum}
             label={t.minimumEstimate}
+            backId={backId}
             lang={lang}
           />
         ) : null}
@@ -935,6 +945,7 @@ function VoteShowcase({
             role="maximum"
             entry={showcase.maximum}
             label={t.maximumEstimate}
+            backId={backId}
             lang={lang}
           />
         ) : null}
@@ -947,11 +958,13 @@ function ShowcaseCard({
   role,
   entry,
   label,
+  backId,
   lang,
 }: {
   role: "majority" | "minimum" | "maximum";
   entry: ShowcaseVote;
   label: string;
+  backId: string;
   lang: Lang;
 }) {
   const lore = cardLore(entry.value, entry.variantId);
@@ -966,6 +979,7 @@ function ShowcaseCard({
         <MagicCard
           value={entry.value}
           variantId={entry.variantId}
+          backId={backId}
           face="front"
           size="hero"
           artwork="character"
