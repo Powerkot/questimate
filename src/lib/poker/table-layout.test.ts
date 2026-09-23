@@ -1,29 +1,36 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { tableLayoutMode, tableSeatPosition } from "./table-layout.ts";
+import { canUseTable, tableSeatAssignments } from "./table-layout.ts";
 
 describe("poker table layout", () => {
-  it("switches layouts without imposing a player limit", () => {
-    assert.equal(tableLayoutMode(1), "round");
-    assert.equal(tableLayoutMode(6), "round");
-    assert.equal(tableLayoutMode(7), "long");
-    assert.equal(tableLayoutMode(12), "long");
-    assert.equal(tableLayoutMode(13), "hall");
-    assert.equal(tableLayoutMode(50), "hall");
+  it("uses the illustrated table only for parties of up to six", () => {
+    assert.equal(canUseTable(1), true);
+    assert.equal(canUseTable(6), true);
+    assert.equal(canUseTable(7), false);
+    assert.equal(canUseTable(50), false);
   });
 
-  it("places every player around the long table", () => {
-    const positions = Array.from({ length: 12 }, (_, index) =>
-      tableSeatPosition(index, 12, "long"),
-    );
+  it("keeps the viewer at the bottom seat", () => {
+    const assignments = tableSeatAssignments(["host", "a", "viewer", "b", "c", "d"], "viewer");
 
-    assert.equal(positions.filter(Boolean).length, 12);
-    assert.equal(positions.filter((position) => position?.top === "26%").length, 6);
-    assert.equal(positions.filter((position) => position?.top === "74%").length, 6);
+    assert.equal(assignments.length, 6);
+    assert.deepEqual(assignments.at(-1), { playerId: "viewer", slot: 3 });
+    assert.equal(new Set(assignments.map(({ slot }) => slot)).size, 6);
   });
 
-  it("lets the hall use its fluid CSS grid for any larger group", () => {
-    assert.equal(tableSeatPosition(0, 13, "hall"), undefined);
-    assert.equal(tableSeatPosition(49, 50, "hall"), undefined);
+  it("distributes smaller parties symmetrically", () => {
+    assert.deepEqual(tableSeatAssignments(["a", "viewer"], "viewer"), [
+      { playerId: "a", slot: 0 },
+      { playerId: "viewer", slot: 3 },
+    ]);
+    assert.deepEqual(tableSeatAssignments(["a", "b", "viewer"], "viewer"), [
+      { playerId: "a", slot: 5 },
+      { playerId: "b", slot: 1 },
+      { playerId: "viewer", slot: 3 },
+    ]);
+  });
+
+  it("leaves larger parties to the cards grid", () => {
+    assert.deepEqual(tableSeatAssignments(["a", "b", "c", "d", "e", "f", "viewer"], "viewer"), []);
   });
 });

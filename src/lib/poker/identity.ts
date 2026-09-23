@@ -3,6 +3,9 @@ const TOKEN_KEY = "pp-token";
 const NAME_KEY = "pp-name";
 const LANG_KEY = "pp-lang";
 const ROOM_KEY = "pp-last-room";
+const ROOM_VIEW_KEY = "pp-room-view";
+
+export type RoomViewMode = "table" | "cards";
 
 function randomPart(): string {
   const bytes = new Uint8Array(12);
@@ -53,4 +56,12 @@ export function loadLang(): "ru" | "en" {
 
 export function saveLang(lang: "ru" | "en"): void {
   localStorage.setItem(LANG_KEY, lang);
+}
+
+export function loadRoomView(): RoomViewMode {
+  return localStorage.getItem(ROOM_VIEW_KEY) === "cards" ? "cards" : "table";
+}
+
+export function saveRoomView(mode: RoomViewMode): void {
+  localStorage.setItem(ROOM_VIEW_KEY, mode);
 }
