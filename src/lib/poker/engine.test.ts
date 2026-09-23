@@ -281,44 +281,4 @@ describe("poker engine", () => {
     const second = normalizeRoom(room).cardBackId;
     assert.equal(first, second);
   });
-
-  it("allows only the host to publish server-derived discussion order", () => {
-    const room = createRoom("ABCDE", stored("host01", "host-token", Date.now()));
-    assert.equal(
-      applyAction(room, {
-        type: "join",
-        playerId: "guest01",
-        token: "guest-token",
-        name: "Guest",
-      }).ok,
-      true,
-    );
-    assert.equal(
-      applyAction(room, {
-        type: "set-task",
-        playerId: "host01",
-        token: "host-token",
-        title: "Quest",
-        description: "",
-      }).ok,
-      true,
-    );
-    applyAction(room, { type: "vote", playerId: "host01", token: "host-token", value: "s" });
-    applyAction(room, { type: "vote", playerId: "guest01", token: "guest-token", value: "XXL" });
-    applyAction(room, { type: "reveal", playerId: "host01", token: "host-token" });
-
-    const guest = applyAction(room, {
-      type: "ask-outliers",
-      playerId: "guest01",
-      token: "guest-token",
-    });
-    assert.deepEqual(guest, { ok: false, error: "unauthorized" });
-    const host = applyAction(room, {
-      type: "ask-outliers",
-      playerId: "host01",
-      token: "host-token",
-    });
-    assert.equal(host.ok, true);
-    assert.match(room.chat.at(-1)?.text ?? "", /Guest \(XXL\)/);
-  });
 });

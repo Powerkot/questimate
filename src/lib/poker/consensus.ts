@@ -8,7 +8,6 @@ export type Consensus = {
   range: string;
   level: "high" | "medium" | "low";
   outliers: PublicPlayer[];
-  askOrder: PublicPlayer[];
   far: PublicPlayer | null;
   sized: PublicPlayer[];
   specials: PublicPlayer[];
@@ -67,8 +66,7 @@ export function analyzeVotes(players: PublicPlayer[], revealed: boolean): Consen
     ? Math.max(...differing.map((p) => Math.abs(SIZE_RANK[p.vote] - modeRank)))
     : 0;
   const outliers = differing.filter((p) => Math.abs(SIZE_RANK[p.vote] - modeRank) === maxDistance);
-  const askOrder = outliers.slice().sort((a, b) => SIZE_RANK[b.vote] - SIZE_RANK[a.vote]);
-  const far = askOrder[0] ?? null;
+  const far = outliers.slice().sort((a, b) => SIZE_RANK[b.vote] - SIZE_RANK[a.vote])[0] ?? null;
   const level = consensusPct >= 80 ? "high" : consensusPct >= 50 ? "medium" : "low";
   const values = ballots
     .map((p) => p.vote)
@@ -82,7 +80,6 @@ export function analyzeVotes(players: PublicPlayer[], revealed: boolean): Consen
     range,
     level,
     outliers,
-    askOrder,
     far,
     sized,
     specials,

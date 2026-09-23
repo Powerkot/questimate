@@ -230,13 +230,6 @@ export function buildDemoRoom(): StoredRoom {
       ts: ago(7 * 60_000),
     },
     {
-      id: "cd20",
-      kind: "system",
-      text: "Сначала обсудите крайние оценки: Максим (XXL).",
-      textEn: "Start with the farthest estimates: Maxim (XXL).",
-      ts: ago(5 * 60_000),
-    },
-    {
       id: "cd21",
       kind: "say",
       fromId: "botkaty",

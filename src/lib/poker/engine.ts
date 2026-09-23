@@ -8,7 +8,6 @@ import {
   type RoomPassword,
 } from "./types.ts";
 import { cardBackIds, cardFaceLabel, cardVariantIds, DEFAULT_CARD_BACK_ID } from "./cards.ts";
-import { analyzeVotes } from "./consensus.ts";
 
 export const DEMO_CODE = "RAID1";
 export const DEMO_SNOW_AFTER_MS = 12_000;
@@ -206,11 +205,6 @@ export type RoomAction =
   | { type: "reveal"; playerId: string; token: string }
   | { type: "revote"; playerId: string; token: string }
   | { type: "finalize"; playerId: string; token: string; result: string }
-  | {
-      type: "ask-outliers";
-      playerId: string;
-      token: string;
-    }
   | { type: "leave"; playerId: string; token: string };
 
 export type ApplyResult =
@@ -406,29 +400,6 @@ export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
     room.roundId = makeId("r");
     room.variants = {};
     room.revealed = false;
-    return { ok: true, room, you: me.id };
-  }
-
-  if (action.type === "ask-outliers") {
-    if (!isHost) return { ok: false, error: "unauthorized" };
-    if (!room.task || !room.revealed) return { ok: false, error: "invalid" };
-    const analysis = analyzeVotes(snapshot(room, me.id).players, true);
-    const clean = (analysis?.askOrder ?? []).slice(0, 12).map((p) => ({
-      name: p.name.slice(0, 24),
-      vote: cardFaceLabel(p.vote),
-    }));
-    if (!clean.length) return { ok: false, error: "invalid" };
-    const parts = clean.map((p) => `${p.name} (${p.vote})`);
-    let text: string;
-    let textEn: string;
-    if (clean.length === 1) {
-      text = `Сначала обсудите крайнюю оценку: ${parts[0]}.`;
-      textEn = `Start with the farthest estimate: ${parts[0]}.`;
-    } else {
-      text = `Сначала обсудите крайние оценки: ${parts.join(", ")}.`;
-      textEn = `Start with the farthest estimates: ${parts.join(", ")}.`;
-    }
-    pushChat(room, { id: makeId("c"), kind: "system", text, textEn, ts: now() });
     return { ok: true, room, you: me.id };
   }
 
