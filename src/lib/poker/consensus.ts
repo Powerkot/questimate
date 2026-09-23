@@ -14,6 +14,19 @@ export type Consensus = {
   specials: PublicPlayer[];
 };
 
+export type ShowcaseVote = {
+  playerId: string;
+  playerName: string;
+  value: CardValue;
+  variantId: string | null;
+};
+
+export type VoteShowcase = {
+  majority: ShowcaseVote;
+  minimum: ShowcaseVote | null;
+  maximum: ShowcaseVote | null;
+};
+
 function mostCommon(values: CardValue[]): CardValue {
   const counts = new Map<CardValue, number>();
   for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
@@ -73,5 +86,58 @@ export function analyzeVotes(players: PublicPlayer[], revealed: boolean): Consen
     far,
     sized,
     specials,
+  };
+}
+
+function toShowcaseVote(player: PublicPlayer | undefined): ShowcaseVote | null {
+  if (!player?.vote) return null;
+  return {
+    playerId: player.id,
+    playerName: player.name,
+    value: player.vote,
+    variantId: player.variantId,
+  };
+}
+
+function pickPlayer(
+  candidates: PublicPlayer[],
+  usedPlayerIds: Set<string>,
+): PublicPlayer | undefined {
+  return candidates.find((player) => !usedPlayerIds.has(player.id)) ?? candidates[0];
+}
+
+/**
+ * Selects the exact persisted character variants used by the reveal animation.
+ * The selection is deterministic and prefers different voters when one estimate
+ * is simultaneously the majority and an edge of the range.
+ */
+export function buildVoteShowcase(analysis: Consensus): VoteShowcase | null {
+  const ballots = [...analysis.sized, ...analysis.specials];
+  const majorityPlayer = ballots.find((player) => player.vote === analysis.mode);
+  const majority = toShowcaseVote(majorityPlayer);
+  if (!majority) return null;
+
+  const usedPlayerIds = new Set([majority.playerId]);
+  if (analysis.sized.length < 2) {
+    return { majority, minimum: null, maximum: null };
+  }
+
+  const minimumValue = analysis.sized[0].vote;
+  const maximumValue = analysis.sized[analysis.sized.length - 1].vote;
+  const minimumPlayer = pickPlayer(
+    analysis.sized.filter((player) => player.vote === minimumValue),
+    usedPlayerIds,
+  );
+  if (minimumPlayer) usedPlayerIds.add(minimumPlayer.id);
+
+  const maximumPlayer = pickPlayer(
+    analysis.sized.filter((player) => player.vote === maximumValue).reverse(),
+    usedPlayerIds,
+  );
+
+  return {
+    majority,
+    minimum: toShowcaseVote(minimumPlayer),
+    maximum: toShowcaseVote(maximumPlayer),
   };
 }

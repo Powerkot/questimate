@@ -7,6 +7,7 @@ import {
   LayoutGrid,
   LogOut,
   MessageCircle,
+  Minimize2,
   Play,
   Presentation,
   ScrollText,
@@ -21,8 +22,8 @@ import { MagicCard, MiniFaces } from "@/components/poker/MagicCard";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { createPokerRoomFn, pokerActionFn, type PokerActionInput } from "@/lib/poker/actions";
-import { cardFaceLabel } from "@/lib/poker/cards";
-import { analyzeVotes } from "@/lib/poker/consensus";
+import { cardFaceLabel, cardLore } from "@/lib/poker/cards";
+import { analyzeVotes, buildVoteShowcase, type ShowcaseVote } from "@/lib/poker/consensus";
 import { DEMO_CODE } from "@/lib/poker/engine";
 import {
   clearLastRoom,
@@ -80,6 +81,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
   const [resumeCode, setResumeCode] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(true);
   const [finalReveal, setFinalReveal] = useState<HistoryEntry | null>(null);
+  const [voteShowcaseOpen, setVoteShowcaseOpen] = useState(false);
   const identity = useRef<{ playerId: string; token: string } | null>(null);
   const restoreAttempted = useRef(false);
   const snowSeen = useRef(0);
@@ -88,11 +90,13 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
   const historyRoom = useRef<string | null>(null);
   const latestHistoryKey = useRef<string | null>(null);
   const finalRevealTimer = useRef<number | null>(null);
+  const showcasedRound = useRef<string | null>(null);
   const actRef = useRef<
     (data: PokerActionInput, opts?: { keepPicked?: boolean; silent?: boolean }) => Promise<boolean>
   >(async () => false);
   const t = I18N[lang];
   codeRef.current = state?.code;
+  const closeVoteShowcase = useCallback(() => setVoteShowcaseOpen(false), []);
 
   useEffect(() => {
     if (state) {
@@ -370,12 +374,21 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
     [state],
   );
 
+  useEffect(() => {
+    if (!state?.revealed || !analysis) {
+      showcasedRound.current = null;
+      setVoteShowcaseOpen(false);
+      return;
+    }
+    if (showcasedRound.current === state.roundId) return;
+    showcasedRound.current = state.roundId;
+    setVoteShowcaseOpen(true);
+  }, [analysis, state?.revealed, state?.roundId]);
+
   if (restoring) {
     return (
       <main className="restore-screen" aria-live="polite">
-        <span className="brand-mark" aria-hidden="true">
-          Q
-        </span>
+        <BrandLockup />
         <p>{t.connecting}</p>
       </main>
     );
@@ -438,15 +451,9 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
       )}
     >
       <header className="quest-header">
-        <div className="brand-lockup">
-          <span className="brand-mark" aria-hidden="true">
-            Q
-          </span>
-          <div>
-            <strong>{APP_NAME}</strong>
-            <span>{lang === "ru" ? "оценка как приключение" : "estimation as an adventure"}</span>
-          </div>
-        </div>
+        <BrandLockup
+          tagline={lang === "ru" ? "оценка как приключение" : "estimation as an adventure"}
+        />
         <div className="room-tools">
           <button
             type="button"
@@ -629,6 +636,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
               state={state}
               analysis={analysis}
               isHost={isHost}
+              onShowcase={() => setVoteShowcaseOpen(true)}
               onAsk={() => {
                 const id = identity.current;
                 if (!id) return;
@@ -797,6 +805,10 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
         {voteStatus === "saved" ? t.voteSaved : voteStatus === "failed" ? t.voteFailed : ""}
       </div>
 
+      {analysis && voteShowcaseOpen ? (
+        <VoteShowcase analysis={analysis} lang={lang} t={t} onClose={closeVoteShowcase} />
+      ) : null}
+
       {finalReveal ? (
         <ConsensusReveal
           entry={finalReveal}
@@ -831,6 +843,145 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
         />
       ) : null}
     </div>
+  );
+}
+
+function BrandLockup({ tagline }: { tagline?: string }) {
+  return (
+    <div className="brand-lockup">
+      <span className="brand-name" role="img" aria-label={APP_NAME}>
+        <img
+          className="brand-mark"
+          src="/brand/questimate-q.webp"
+          width="320"
+          height="320"
+          alt=""
+          aria-hidden="true"
+          decoding="async"
+        />
+        <strong aria-hidden="true">UESTIMATE</strong>
+      </span>
+      {tagline ? <span className="brand-tagline">{tagline}</span> : null}
+    </div>
+  );
+}
+
+function VoteShowcase({
+  analysis,
+  lang,
+  t,
+  onClose,
+}: {
+  analysis: NonNullable<ReturnType<typeof analyzeVotes>>;
+  lang: Lang;
+  t: (typeof I18N)[Lang];
+  onClose: () => void;
+}) {
+  const showcase = buildVoteShowcase(analysis);
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKey);
+    };
+  }, [onClose]);
+
+  if (!showcase) return null;
+
+  return (
+    <div
+      className="vote-showcase"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="vote-showcase-title"
+    >
+      <h2 id="vote-showcase-title" className="sr-only">
+        {t.voteShowcaseTitle}
+      </h2>
+      <div className="vote-showcase-halo" aria-hidden="true" />
+      <button
+        type="button"
+        className="vote-showcase-collapse"
+        onClick={onClose}
+        aria-label={t.collapseShowcase}
+        autoFocus
+      >
+        <Minimize2 aria-hidden="true" />
+        <span>{t.collapseShowcase}</span>
+      </button>
+      <div className="vote-showcase-stage">
+        <ShowcaseCard
+          role="majority"
+          entry={showcase.majority}
+          label={t.majorityChose}
+          lang={lang}
+        />
+        {showcase.minimum ? (
+          <ShowcaseCard
+            role="minimum"
+            entry={showcase.minimum}
+            label={t.minimumEstimate}
+            lang={lang}
+          />
+        ) : null}
+        {showcase.maximum ? (
+          <ShowcaseCard
+            role="maximum"
+            entry={showcase.maximum}
+            label={t.maximumEstimate}
+            lang={lang}
+          />
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function ShowcaseCard({
+  role,
+  entry,
+  label,
+  lang,
+}: {
+  role: "majority" | "minimum" | "maximum";
+  entry: ShowcaseVote;
+  label: string;
+  lang: Lang;
+}) {
+  const lore = cardLore(entry.value, entry.variantId);
+  const valueLabel = cardFaceLabel(entry.value);
+  const accessibleLabel = lore
+    ? `${label}: ${valueLabel}, ${lore.name[lang]}, ${lore.title[lang]}`
+    : `${label}: ${valueLabel}`;
+
+  return (
+    <article className={cn("vote-showcase-item", `is-${role}`)} aria-label={accessibleLabel}>
+      <div className="vote-showcase-flight">
+        <MagicCard
+          value={entry.value}
+          variantId={entry.variantId}
+          face="front"
+          size="hero"
+          artwork="character"
+          lang={lang}
+          eager
+        />
+      </div>
+      <div className="vote-showcase-caption">
+        <span>{label}</span>
+        <strong>{lore?.name[lang] ?? valueLabel}</strong>
+        <small>
+          {valueLabel}
+          {lore ? ` · ${lore.title[lang]}` : ""}
+        </small>
+      </div>
+    </article>
   );
 }
 
@@ -878,6 +1029,7 @@ function ConsensusReveal({
           size="hero"
           artwork="character"
           lang={lang}
+          eager
         />
       </div>
       <div className="consensus-reveal-copy">
@@ -987,14 +1139,7 @@ function Lobby({
       </picture>
       <div className="lobby-shade" aria-hidden="true" />
       <header className="lobby-nav">
-        <div className="brand-lockup">
-          <span className="brand-mark" aria-hidden="true">
-            Q
-          </span>
-          <div>
-            <strong>{APP_NAME}</strong>
-          </div>
-        </div>
+        <BrandLockup />
         <div className="lobby-nav-actions">
           <button type="button" className="lobby-help" onClick={() => openPanel("help")}>
             <CircleHelp aria-hidden="true" /> {isRu ? "Как играть" : "How it works"}
@@ -1324,6 +1469,7 @@ function Seat({
   onNameClick: (x: number, y: number) => void;
 }) {
   const snow = player.snowUntil > now;
+  const displayName = `${player.name}${isYou ? (lang === "ru" ? " · вы" : " · you") : ""}${snow ? " ☃" : ""}`;
   let face: "back" | "front" | "empty" = "empty";
   if (task && player.voted && !revealed) face = "back";
   else if (revealed && player.vote) face = "front";
@@ -1337,17 +1483,17 @@ function Seat({
       )}
       data-table-slot={slot}
     >
-      <div className="player-meta">
+      <div className="player-meta" title={displayName}>
         <button
           type="button"
           disabled={isYou}
+          title={displayName}
+          aria-label={displayName}
           onClick={(event) => onNameClick(event.clientX, event.clientY)}
         >
           {player.isHost && player.online ? <Crown aria-hidden="true" /> : null}
-          <span className="player-name">
-            {player.name}
-            {isYou ? (lang === "ru" ? " · вы" : " · you") : ""}
-            {snow ? " ☃" : ""}
+          <span className={cn("player-name", displayName.length > 15 && "is-long")}>
+            {displayName}
           </span>
         </button>
         <span>{!player.online ? t.away : player.voted ? t.voted : t.waiting}</span>
@@ -1421,6 +1567,7 @@ function ConsensusPanel({
   state,
   analysis,
   isHost,
+  onShowcase,
   onAsk,
 }: {
   t: (typeof I18N)[Lang];
@@ -1428,6 +1575,7 @@ function ConsensusPanel({
   state: Snapshot;
   analysis: NonNullable<ReturnType<typeof analyzeVotes>>;
   isHost: boolean;
+  onShowcase: () => void;
   onAsk: () => void;
 }) {
   const levelLabel =
@@ -1504,11 +1652,17 @@ function ConsensusPanel({
           ) : null}
         </div>
       ) : null}
-      {isHost && analysis.askOrder.length ? (
-        <Button type="button" onClick={onAsk}>
-          {t.askOutliers}
+      <div className="consensus-actions">
+        {isHost && analysis.askOrder.length ? (
+          <Button type="button" onClick={onAsk}>
+            {t.askOutliers}
+          </Button>
+        ) : null}
+        <Button type="button" variant="ghost" onClick={onShowcase}>
+          <Sparkles aria-hidden="true" />
+          {t.expandShowcase}
         </Button>
-      ) : null}
+      </div>
     </section>
   );
 }

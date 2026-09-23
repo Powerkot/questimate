@@ -93,6 +93,12 @@ type Dict = {
   finalEstimate: string;
   questComplete: string;
   partyDecision: string;
+  voteShowcaseTitle: string;
+  majorityChose: string;
+  minimumEstimate: string;
+  maximumEstimate: string;
+  collapseShowcase: string;
+  expandShowcase: string;
 };
 
 export const I18N: Record<Lang, Dict> = {
@@ -187,6 +193,12 @@ export const I18N: Record<Lang, Dict> = {
     finalEstimate: "Итоговая оценка",
     questComplete: "Квест завершён",
     partyDecision: "Решение команды",
+    voteShowcaseTitle: "Итоги голосования",
+    majorityChose: "Большинство выбрало",
+    minimumEstimate: "Минимальная оценка",
+    maximumEstimate: "Максимальная оценка",
+    collapseShowcase: "Свернуть",
+    expandShowcase: "Развернуть представление",
   },
   en: {
     kicker: APP_DOMAIN,
@@ -280,6 +292,12 @@ export const I18N: Record<Lang, Dict> = {
     finalEstimate: "Final estimate",
     questComplete: "Quest complete",
     partyDecision: "The party has decided",
+    voteShowcaseTitle: "Voting results",
+    majorityChose: "Most players chose",
+    minimumEstimate: "Minimum estimate",
+    maximumEstimate: "Maximum estimate",
+    collapseShowcase: "Collapse",
+    expandShowcase: "Expand presentation",
   },
 };
 
