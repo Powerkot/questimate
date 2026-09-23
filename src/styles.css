@@ -2207,50 +2207,62 @@
   padding: 0;
 }
 /*
- * These six geometries are calibrated against the glowing lines in the native
- * background artwork. Each card overscans its line by roughly 3–5 source pixels;
- * the differing aspect ratios reproduce the table perspective and hide the slot.
+ * Each stage matches a glowing slot in the background. The card inside always
+ * keeps its physical 3:4 proportions; a 3D tilt creates the table perspective
+ * without stretching either the back or the revealed face.
  */
 .view-table .player-seat[data-table-slot="0"] {
   top: 15.2%;
   left: 50%;
   --table-card-width: 54%;
-  --table-card-ratio: 1;
+  --table-slot-ratio: 1;
+  --table-card-render-width: 106%;
+  --table-card-tilt: 42deg;
   --table-name-width: 80%;
 }
 .view-table .player-seat[data-table-slot="1"] {
   top: 28%;
   left: 74.35%;
   --table-card-width: 60%;
-  --table-card-ratio: 1.04;
+  --table-slot-ratio: 1.04;
+  --table-card-render-width: 106%;
+  --table-card-tilt: 45deg;
   --table-name-width: 82%;
 }
 .view-table .player-seat[data-table-slot="2"] {
   top: 49.1%;
   left: 76.1%;
   --table-card-width: 67%;
-  --table-card-ratio: 1;
+  --table-slot-ratio: 1;
+  --table-card-render-width: 106%;
+  --table-card-tilt: 42deg;
   --table-name-width: 88%;
 }
 .view-table .player-seat[data-table-slot="3"] {
   top: 62.9%;
   left: 50%;
   --table-card-width: 67%;
-  --table-card-ratio: 0.94;
+  --table-slot-ratio: 0.94;
+  --table-card-render-width: 106%;
+  --table-card-tilt: 39deg;
   --table-name-width: 92%;
 }
 .view-table .player-seat[data-table-slot="4"] {
   top: 49.1%;
   left: 23.7%;
   --table-card-width: 67%;
-  --table-card-ratio: 1;
+  --table-slot-ratio: 1;
+  --table-card-render-width: 106%;
+  --table-card-tilt: 42deg;
   --table-name-width: 88%;
 }
 .view-table .player-seat[data-table-slot="5"] {
   top: 28%;
   left: 25.6%;
   --table-card-width: 60%;
-  --table-card-ratio: 1.04;
+  --table-slot-ratio: 1.04;
+  --table-card-render-width: 106%;
+  --table-card-tilt: 45deg;
   --table-name-width: 82%;
 }
 .view-table .player-seat::before {
@@ -2317,17 +2329,34 @@
 .view-table .mc {
   order: 0;
 }
-.view-table .mc-seat,
-.view-table .mc-hero {
+.table-card-stage {
+  display: contents;
+}
+.view-table .table-card-stage {
+  position: relative;
+  display: block;
   width: var(--table-card-width);
+  aspect-ratio: var(--table-slot-ratio);
+  flex: 0 0 auto;
+  perspective: 24rem;
+  perspective-origin: 50% 50%;
+}
+.view-table .table-card-stage .mc-seat,
+.view-table .table-card-stage .mc-hero {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--table-card-render-width, 106%);
   height: auto;
-  aspect-ratio: var(--table-card-ratio);
+  aspect-ratio: 3 / 4;
+  transform: translate(-50%, -50%) rotateX(var(--table-card-tilt, 0deg));
+  transform-origin: 50% 50%;
 }
 .view-table .mc-side {
   box-shadow: 0 7px 16px #000c;
 }
 .view-table .mc-side img {
-  object-fit: fill;
+  object-fit: cover;
 }
 .view-table .mc.is-empty {
   visibility: hidden;
@@ -2687,42 +2716,54 @@
     top: 18.4%;
     left: 49.9%;
     --table-card-width: 49%;
-    --table-card-ratio: 0.85;
+    --table-slot-ratio: 0.85;
+    --table-card-render-width: 105%;
+    --table-card-tilt: 29deg;
     --table-name-width: 78%;
   }
   .view-table .player-seat[data-table-slot="1"] {
     top: 31.1%;
     left: 81.5%;
     --table-card-width: 54%;
-    --table-card-ratio: 0.83;
+    --table-slot-ratio: 0.83;
+    --table-card-render-width: 105%;
+    --table-card-tilt: 27deg;
     --table-name-width: 78%;
   }
   .view-table .player-seat[data-table-slot="2"] {
     top: 50%;
     left: 83%;
     --table-card-width: 53%;
-    --table-card-ratio: 0.7;
+    --table-slot-ratio: 0.7;
+    --table-card-render-width: 112%;
+    --table-card-tilt: 5deg;
     --table-name-width: 80%;
   }
   .view-table .player-seat[data-table-slot="3"] {
     top: 63.4%;
     left: 49.9%;
     --table-card-width: 64%;
-    --table-card-ratio: 0.8;
+    --table-slot-ratio: 0.8;
+    --table-card-render-width: 106%;
+    --table-card-tilt: 23deg;
     --table-name-width: 92%;
   }
   .view-table .player-seat[data-table-slot="4"] {
     top: 50%;
     left: 15.7%;
     --table-card-width: 58%;
-    --table-card-ratio: 0.77;
+    --table-slot-ratio: 0.77;
+    --table-card-render-width: 108%;
+    --table-card-tilt: 20deg;
     --table-name-width: 80%;
   }
   .view-table .player-seat[data-table-slot="5"] {
     top: 31.1%;
     left: 18.3%;
     --table-card-width: 53.5%;
-    --table-card-ratio: 0.82;
+    --table-slot-ratio: 0.82;
+    --table-card-render-width: 105%;
+    --table-card-tilt: 26deg;
     --table-name-width: 78%;
   }
   .view-table .player-meta {
