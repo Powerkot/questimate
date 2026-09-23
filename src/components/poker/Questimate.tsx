@@ -636,18 +636,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
               lang={lang}
               state={state}
               analysis={analysis}
-              isHost={isHost}
               onShowcase={() => setVoteShowcaseOpen(true)}
-              onAsk={() => {
-                const id = identity.current;
-                if (!id) return;
-                void act({
-                  type: "ask-outliers",
-                  code: state.code,
-                  playerId: id.playerId,
-                  token: id.token,
-                });
-              }}
             />
           ) : null}
 
@@ -1659,17 +1648,13 @@ function ConsensusPanel({
   lang,
   state,
   analysis,
-  isHost,
   onShowcase,
-  onAsk,
 }: {
   t: (typeof I18N)[Lang];
   lang: Lang;
   state: Snapshot;
   analysis: NonNullable<ReturnType<typeof analyzeVotes>>;
-  isHost: boolean;
   onShowcase: () => void;
-  onAsk: () => void;
 }) {
   const levelLabel =
     analysis.level === "high"
@@ -1746,11 +1731,6 @@ function ConsensusPanel({
         </div>
       ) : null}
       <div className="consensus-actions">
-        {isHost && analysis.askOrder.length ? (
-          <Button type="button" onClick={onAsk}>
-            {t.askOutliers}
-          </Button>
-        ) : null}
         <Button type="button" variant="ghost" onClick={onShowcase}>
           <Sparkles aria-hidden="true" />
           {t.expandShowcase}

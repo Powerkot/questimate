@@ -56,7 +56,6 @@ type Dict = {
   noSizedVotes: string;
   allAgree: string;
   votedWhileMost: (name: string, vote: string, mode: string) => string;
-  askOutliers: string;
   connecting: string;
   party: string;
   pickResult: string;
@@ -156,7 +155,6 @@ export const I18N: Record<Lang, Dict> = {
     noSizedVotes: "Для картины согласия нужны оценки размера, не только ? и ☕.",
     allAgree: "Команда сошлась на одной оценке.",
     votedWhileMost: (name, vote, mode) => `${name} — ${vote}, большинство команды — ${mode}.`,
-    askOutliers: "Сначала обсудить крайние оценки",
     connecting: "Входим в группу…",
     party: "группа",
     pickResult: "Выберите итог по шкале",
@@ -198,7 +196,7 @@ export const I18N: Record<Lang, Dict> = {
     minimumEstimate: "Минимальная оценка",
     maximumEstimate: "Максимальная оценка",
     collapseShowcase: "Свернуть",
-    expandShowcase: "Развернуть представление",
+    expandShowcase: "Показать разбор оценок",
   },
   en: {
     kicker: APP_DOMAIN,
@@ -255,7 +253,6 @@ export const I18N: Record<Lang, Dict> = {
     allAgree: "The team landed on the same estimate.",
     votedWhileMost: (name, vote, mode) =>
       `${name} chose ${vote}, while most of the team chose ${mode}.`,
-    askOutliers: "Discuss the farthest estimates first",
     connecting: "Joining the party…",
     party: "party",
     pickResult: "Pick a result on the scale",
@@ -297,7 +294,7 @@ export const I18N: Record<Lang, Dict> = {
     minimumEstimate: "Minimum estimate",
     maximumEstimate: "Maximum estimate",
     collapseShowcase: "Collapse",
-    expandShowcase: "Expand presentation",
+    expandShowcase: "Show vote breakdown",
   },
 };
 

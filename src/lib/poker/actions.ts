@@ -39,7 +39,6 @@ const actionSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("reveal"), code, playerId: id, token }),
   z.object({ type: z.literal("revote"), code, playerId: id, token }),
   z.object({ type: z.literal("finalize"), code, playerId: id, token, result: z.string().max(8) }),
-  z.object({ type: z.literal("ask-outliers"), code, playerId: id, token }),
   z.object({ type: z.literal("leave"), code, playerId: id, token }),
 ]);
 
