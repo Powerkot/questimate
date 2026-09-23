@@ -4,12 +4,14 @@ import {
   Copy,
   Crown,
   LockKeyhole,
+  LayoutGrid,
   LogOut,
   MessageCircle,
   Play,
   Presentation,
   ScrollText,
   Sparkles,
+  Table2,
   Users,
   WifiOff,
   X,
@@ -28,13 +30,16 @@ import {
   loadLang,
   loadLastRoom,
   loadName,
+  loadRoomView,
   saveLang,
   saveLastRoom,
   saveName,
+  saveRoomView,
+  type RoomViewMode,
 } from "@/lib/poker/identity";
 import { I18N, chatText, type Lang } from "@/lib/poker/i18n";
 import { playHit, vibrateHit } from "@/lib/poker/sound";
-import { tableLayoutMode, tableSeatPosition } from "@/lib/poker/table-layout";
+import { canUseTable, tableSeatAssignments } from "@/lib/poker/table-layout";
 import {
   type CardValue,
   type HistoryEntry,
@@ -70,6 +75,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
   const [menu, setMenu] = useState<{ x: number; y: number; targetId: string } | null>(null);
   const [sideTab, setSideTab] = useState<"history" | "chat">("chat");
   const [mobilePane, setMobilePane] = useState<"table" | "chat" | "history">("table");
+  const [roomView, setRoomView] = useState<RoomViewMode>("table");
   const [presentation, setPresentation] = useState(false);
   const [resumeCode, setResumeCode] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(true);
@@ -108,6 +114,10 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
   useEffect(() => {
     document.documentElement.lang = lang;
   }, [lang]);
+
+  useEffect(() => {
+    setRoomView(loadRoomView());
+  }, []);
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000);
@@ -398,7 +408,25 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
 
   const votedCount = state.players.filter((player) => player.voted).length;
   const allVoted = state.players.length > 0 && votedCount === state.players.length;
-  const tableMode = tableLayoutMode(state.players.length);
+  const tableEnabled = canUseTable(state.players.length);
+  const visualMode: RoomViewMode = roomView === "table" && tableEnabled ? "table" : "cards";
+  const playersById = new Map(state.players.map((player) => [player.id, player]));
+  const tablePlayers = tableSeatAssignments(
+    state.players.map((player) => player.id),
+    you,
+  ).flatMap(({ playerId, slot }) => {
+    const player = playersById.get(playerId);
+    return player ? [{ player, slot }] : [];
+  });
+  const visiblePlayers =
+    visualMode === "table"
+      ? tablePlayers
+      : state.players.map((player) => ({ player, slot: undefined }));
+
+  const chooseRoomView = (mode: RoomViewMode) => {
+    setRoomView(mode);
+    saveRoomView(mode);
+  };
 
   return (
     <div
@@ -508,52 +536,73 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
           ) : null}
 
           <section
-            className={cn("party-table", `table-mode-${tableMode}`)}
+            className={cn("party-table", `view-${visualMode}`)}
             aria-labelledby="party-title"
           >
-            <div className="table-scene">
-              <picture className="table-scene-art" aria-hidden="true">
-                <source
-                  media="(max-width: 759px)"
-                  srcSet={
-                    tableMode === "round"
-                      ? `/room/tavern-reference-${lang}-720.webp`
-                      : "/room/table-long-720.webp"
-                  }
-                />
-                <img
-                  src={
-                    tableMode === "round"
-                      ? `/room/tavern-reference-${lang}-1200.webp`
-                      : "/room/table-long-1200.webp"
-                  }
-                  width="1200"
-                  height="751"
-                  alt=""
-                  decoding="async"
-                />
-              </picture>
-              <div className="table-scene-shade" aria-hidden="true" />
-              <div className="table-status">
+            <div className="party-table-toolbar">
+              <div className="party-summary">
                 <span className="eyebrow">
                   <Users /> {t.team}
                 </span>
-                <h2 id="party-title">
-                  {allVoted ? t.allVoted : t.votesOf(votedCount, state.players.length)}
-                </h2>
-                <div className="vote-progress" aria-hidden="true">
-                  <span
-                    style={{
-                      width: `${state.players.length ? (votedCount / state.players.length) * 100 : 0}%`,
-                    }}
-                  />
+                <div className="party-summary-row">
+                  <h2 id="party-title">
+                    {allVoted ? t.allVoted : t.votesOf(votedCount, state.players.length)}
+                  </h2>
+                  <div className="vote-progress" aria-hidden="true">
+                    <span
+                      style={{
+                        width: `${state.players.length ? (votedCount / state.players.length) * 100 : 0}%`,
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
+              {!presentation ? (
+                <div className="room-view-switch" role="group" aria-label={t.roomViewMode}>
+                  <button
+                    type="button"
+                    className={cn(visualMode === "table" && "is-active")}
+                    disabled={!tableEnabled}
+                    aria-pressed={visualMode === "table"}
+                    title={!tableEnabled ? t.tableCapacityHint : t.tableView}
+                    onClick={() => chooseRoomView("table")}
+                  >
+                    <Table2 aria-hidden="true" />
+                    <span>{t.tableView}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={cn(visualMode === "cards" && "is-active")}
+                    aria-pressed={visualMode === "cards"}
+                    onClick={() => chooseRoomView("cards")}
+                  >
+                    <LayoutGrid aria-hidden="true" />
+                    <span>{t.cardsView}</span>
+                  </button>
+                </div>
+              ) : null}
+            </div>
+            <div className="table-scene">
+              {visualMode === "table" ? (
+                <>
+                  <picture className="table-scene-art" aria-hidden="true">
+                    <source media="(max-width: 759px)" srcSet="/room/table-oval-mobile-720.webp" />
+                    <img
+                      src="/room/table-oval-desktop-1536.webp"
+                      width="1536"
+                      height="1024"
+                      alt=""
+                      decoding="async"
+                    />
+                  </picture>
+                  <div className="table-scene-shade" aria-hidden="true" />
+                </>
+              ) : null}
               <div
                 className={cn("seat-grid", state.revealed && "is-revealed")}
                 data-seat-count={state.players.length}
               >
-                {state.players.map((player, index) => (
+                {visiblePlayers.map(({ player, slot }) => (
                   <Seat
                     key={player.id}
                     player={player}
@@ -565,7 +614,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
                     outlier={Boolean(analysis?.outliers.some((item) => item.id === player.id))}
                     isYou={player.id === you}
                     backId={state.cardBackId}
-                    style={tableSeatPosition(index, state.players.length, tableMode)}
+                    slot={slot}
                     onNameClick={(x, y) => setMenu({ x, y, targetId: player.id })}
                   />
                 ))}
@@ -1259,7 +1308,7 @@ function Seat({
   outlier,
   isYou,
   backId,
-  style,
+  slot,
   onNameClick,
 }: {
   player: PublicPlayer;
@@ -1271,7 +1320,7 @@ function Seat({
   outlier: boolean;
   isYou: boolean;
   backId: string;
-  style?: React.CSSProperties;
+  slot?: number;
   onNameClick: (x: number, y: number) => void;
 }) {
   const snow = player.snowUntil > now;
@@ -1286,7 +1335,7 @@ function Seat({
         !player.online && "is-away",
         outlier && revealed && "is-outlier",
       )}
-      style={style}
+      data-table-slot={slot}
     >
       <div className="player-meta">
         <button
@@ -1295,9 +1344,11 @@ function Seat({
           onClick={(event) => onNameClick(event.clientX, event.clientY)}
         >
           {player.isHost && player.online ? <Crown aria-hidden="true" /> : null}
-          {player.name}
-          {isYou ? (lang === "ru" ? " · вы" : " · you") : ""}
-          {snow ? " ☃" : ""}
+          <span className="player-name">
+            {player.name}
+            {isYou ? (lang === "ru" ? " · вы" : " · you") : ""}
+            {snow ? " ☃" : ""}
+          </span>
         </button>
         <span>{!player.online ? t.away : player.voted ? t.voted : t.waiting}</span>
       </div>

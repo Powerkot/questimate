@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
-import { clearLastRoom, getOrCreateIdentity, loadLastRoom, saveLastRoom } from "./identity.ts";
+import {
+  clearLastRoom,
+  getOrCreateIdentity,
+  loadLastRoom,
+  loadRoomView,
+  saveLastRoom,
+  saveRoomView,
+} from "./identity.ts";
 
 class MemoryStorage implements Storage {
   #values = new Map<string, string>();
@@ -75,5 +82,13 @@ describe("poker browser identity", () => {
 
     clearLastRoom("ABCDE");
     assert.equal(loadLastRoom(), null);
+  });
+
+  it("remembers the participant's visual mode in this browser", () => {
+    assert.equal(loadRoomView(), "table");
+    saveRoomView("cards");
+    assert.equal(loadRoomView(), "cards");
+    saveRoomView("table");
+    assert.equal(loadRoomView(), "table");
   });
 });
