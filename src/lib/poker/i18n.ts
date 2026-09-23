@@ -87,6 +87,8 @@ type Dict = {
   breakRequested: string;
   revealHint: string;
   finalEstimate: string;
+  questComplete: string;
+  partyDecision: string;
 };
 
 export const I18N: Record<Lang, Dict> = {
@@ -176,6 +178,8 @@ export const I18N: Record<Lang, Dict> = {
     breakRequested: "Команде нужна пауза",
     revealHint: "Карты останутся закрыты, пока вы не откроете стол.",
     finalEstimate: "Итоговая оценка",
+    questComplete: "Квест завершён",
+    partyDecision: "Решение команды",
   },
   en: {
     kicker: APP_DOMAIN,
@@ -263,6 +267,8 @@ export const I18N: Record<Lang, Dict> = {
     breakRequested: "The party needs a break",
     revealHint: "Cards stay hidden until you open the table.",
     finalEstimate: "Final estimate",
+    questComplete: "Quest complete",
+    partyDecision: "The party has decided",
   },
 };
 

@@ -19,6 +19,7 @@ import { MagicCard, MiniFaces } from "@/components/poker/MagicCard";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { createPokerRoomFn, pokerActionFn, type PokerActionInput } from "@/lib/poker/actions";
+import { cardFaceLabel } from "@/lib/poker/cards";
 import { analyzeVotes } from "@/lib/poker/consensus";
 import { DEMO_CODE } from "@/lib/poker/engine";
 import {
@@ -34,7 +35,12 @@ import {
 import { I18N, chatText, type Lang } from "@/lib/poker/i18n";
 import { playHit, vibrateHit } from "@/lib/poker/sound";
 import { tableLayoutMode, tableSeatPosition } from "@/lib/poker/table-layout";
-import { type CardValue, type PublicPlayer, type Snapshot } from "@/lib/poker/types";
+import {
+  type CardValue,
+  type HistoryEntry,
+  type PublicPlayer,
+  type Snapshot,
+} from "@/lib/poker/types";
 import { APP_NAME } from "@/lib/brand";
 import { cn } from "@/lib/cn";
 
@@ -67,11 +73,15 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
   const [presentation, setPresentation] = useState(false);
   const [resumeCode, setResumeCode] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(true);
+  const [finalReveal, setFinalReveal] = useState<HistoryEntry | null>(null);
   const identity = useRef<{ playerId: string; token: string } | null>(null);
   const restoreAttempted = useRef(false);
   const snowSeen = useRef(0);
   const codeRef = useRef<string | undefined>(undefined);
   const snapKey = useRef("");
+  const historyRoom = useRef<string | null>(null);
+  const latestHistoryKey = useRef<string | null>(null);
+  const finalRevealTimer = useRef<number | null>(null);
   const actRef = useRef<
     (data: PokerActionInput, opts?: { keepPicked?: boolean; silent?: boolean }) => Promise<boolean>
   >(async () => false);
@@ -240,6 +250,37 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
     setPicked(null);
     setVoteStatus("idle");
   }, [state?.roundId]);
+
+  useEffect(() => {
+    const room = state?.code ?? null;
+    const latest = state?.history[0] ?? null;
+    const latestKey = latest ? `${latest.id}:${latest.ts}` : null;
+    if (!room) {
+      historyRoom.current = null;
+      latestHistoryKey.current = null;
+      setFinalReveal(null);
+      return;
+    }
+    if (historyRoom.current !== room) {
+      historyRoom.current = room;
+      latestHistoryKey.current = latestKey;
+      setFinalReveal(null);
+      return;
+    }
+    if (latest && latestKey !== latestHistoryKey.current) {
+      setFinalReveal(latest);
+      if (finalRevealTimer.current) window.clearTimeout(finalRevealTimer.current);
+      finalRevealTimer.current = window.setTimeout(() => setFinalReveal(null), 7000);
+    }
+    latestHistoryKey.current = latestKey;
+  }, [state?.code, state?.history]);
+
+  useEffect(
+    () => () => {
+      if (finalRevealTimer.current) window.clearTimeout(finalRevealTimer.current);
+    },
+    [],
+  );
 
   const toggleLang = () => {
     const next = lang === "ru" ? "en" : "ru";
@@ -707,6 +748,19 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
         {voteStatus === "saved" ? t.voteSaved : voteStatus === "failed" ? t.voteFailed : ""}
       </div>
 
+      {finalReveal ? (
+        <ConsensusReveal
+          entry={finalReveal}
+          lang={lang}
+          t={t}
+          onClose={() => {
+            if (finalRevealTimer.current) window.clearTimeout(finalRevealTimer.current);
+            finalRevealTimer.current = null;
+            setFinalReveal(null);
+          }}
+        />
+      ) : null}
+
       {menu ? (
         <ContextMenu
           x={menu.x}
@@ -727,6 +781,62 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
           onClose={() => setMenu(null)}
         />
       ) : null}
+    </div>
+  );
+}
+
+function ConsensusReveal({
+  entry,
+  lang,
+  t,
+  onClose,
+}: {
+  entry: HistoryEntry;
+  lang: Lang;
+  t: (typeof I18N)[Lang];
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="consensus-reveal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="result-title"
+    >
+      <button
+        type="button"
+        className="consensus-reveal-close"
+        onClick={onClose}
+        aria-label={lang === "ru" ? "Закрыть" : "Close"}
+        autoFocus
+      >
+        <X aria-hidden="true" />
+      </button>
+      <div className="consensus-reveal-glow" aria-hidden="true" />
+      <div className="consensus-reveal-card">
+        <MagicCard
+          value={entry.result}
+          variantId={entry.resultVariantId}
+          face="front"
+          size="hero"
+          artwork="character"
+          lang={lang}
+        />
+      </div>
+      <div className="consensus-reveal-copy">
+        <span className="eyebrow">{t.questComplete}</span>
+        <h2 id="result-title">{entry.title}</h2>
+        <p>{t.partyDecision}</p>
+        <strong>{cardFaceLabel(entry.result)}</strong>
+      </div>
     </div>
   );
 }
