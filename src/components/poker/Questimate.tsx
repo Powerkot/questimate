@@ -1445,7 +1445,11 @@ function ConsensusPanel({
   let insight = t.allAgree;
   if (!analysis.sized.length) insight = t.noSizedVotes;
   else if (analysis.far)
-    insight = t.votedWhileMost(analysis.far.name, analysis.far.vote || "", analysis.mode);
+    insight = t.votedWhileMost(
+      analysis.far.name,
+      cardFaceLabel(analysis.far.vote),
+      cardFaceLabel(analysis.mode),
+    );
 
   return (
     <section className="consensus-card">
@@ -1466,19 +1470,23 @@ function ConsensusPanel({
       <dl className="consensus-stats">
         <div>
           <dt>{t.median}</dt>
-          <dd>{analysis.median}</dd>
+          <dd>{cardFaceLabel(analysis.median)}</dd>
         </div>
         <div>
           <dt>{t.mode}</dt>
-          <dd>{analysis.mode}</dd>
+          <dd>{cardFaceLabel(analysis.mode)}</dd>
         </div>
         <div>
           <dt>{t.range}</dt>
-          <dd>{analysis.range}</dd>
+          <dd>{cardFaceLabel(analysis.range)}</dd>
         </div>
         <div>
           <dt>{t.outliers}</dt>
-          <dd>{outlierValues.length ? outlierValues.join(", ") : t.none}</dd>
+          <dd>
+            {outlierValues.length
+              ? outlierValues.map((value) => cardFaceLabel(value)).join(", ")
+              : t.none}
+          </dd>
         </div>
       </dl>
       {questionCount || coffeeCount ? (
@@ -1553,7 +1561,7 @@ function HostControls({
                 className={cn(resultPick === value && "is-selected")}
                 onClick={() => onResultPick(value)}
               >
-                {value}
+                {cardFaceLabel(value)}
               </button>
             ))}
           </div>
@@ -1626,9 +1634,11 @@ function HistoryPanel({ t, history }: { t: (typeof I18N)[Lang]; history: Snapsho
           <article key={item.id} className="history-item">
             <div>
               <strong>{item.title}</strong>
-              <span>{item.result}</span>
+              <span>{cardFaceLabel(item.result)}</span>
             </div>
-            <p>{item.votes.map((vote) => `${vote.name}: ${vote.value}`).join(" · ")}</p>
+            <p>
+              {item.votes.map((vote) => `${vote.name}: ${cardFaceLabel(vote.value)}`).join(" · ")}
+            </p>
           </article>
         ))
       )}

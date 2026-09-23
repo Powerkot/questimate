@@ -147,7 +147,7 @@ export function buildDemoRoom(): StoredRoom {
       kind: "say",
       fromId: "botanna",
       from: "Анна",
-      text: "Если мобильные не трогаем в этом спринте — для меня это l.",
+      text: "Если мобильные не трогаем в этом спринте — для меня это L.",
       ts: ago(42 * 60_000),
     },
     {
@@ -172,8 +172,8 @@ export function buildDemoRoom(): StoredRoom {
     {
       id: "cd12",
       kind: "system",
-      text: "Задача «Авторизация через SSO» оценена как l.",
-      textEn: "Task “Авторизация через SSO” estimated as l.",
+      text: "Задача «Авторизация через SSO» оценена как L.",
+      textEn: "Task “Авторизация через SSO” estimated as L.",
       ts: ago(38 * 60_000),
     },
     {
@@ -194,8 +194,8 @@ export function buildDemoRoom(): StoredRoom {
     {
       id: "cd15",
       kind: "system",
-      text: "Задача «Редизайн карточки заказа» оценена как m.",
-      textEn: "Task “Редизайн карточки заказа” estimated as m.",
+      text: "Задача «Редизайн карточки заказа» оценена как M.",
+      textEn: "Task “Редизайн карточки заказа” estimated as M.",
       ts: ago(22 * 60_000),
     },
     {
@@ -249,7 +249,7 @@ export function buildDemoRoom(): StoredRoom {
       kind: "say",
       fromId: "botilya",
       from: "Илья",
-      text: "Я на m, но уеду на l, если каскад правда синхронный.",
+      text: "Я на M, но уеду на L, если каскад правда синхронный.",
       ts: ago(2 * 60_000),
     },
   ];
