@@ -7,7 +7,7 @@ import {
   type StoredRoom,
   type RoomPassword,
 } from "./types.ts";
-import { cardBackIds, cardVariantIds, DEFAULT_CARD_BACK_ID } from "./cards.ts";
+import { cardBackIds, cardFaceLabel, cardVariantIds, DEFAULT_CARD_BACK_ID } from "./cards.ts";
 import { analyzeVotes } from "./consensus.ts";
 
 export const DEMO_CODE = "RAID1";
@@ -397,8 +397,8 @@ export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
     pushChat(room, {
       id: makeId("c"),
       kind: "system",
-      text: `Задача «${room.task.title}» оценена как ${action.result}.`,
-      textEn: `Task “${room.task.title}” estimated as ${action.result}.`,
+      text: `Задача «${room.task.title}» оценена как ${cardFaceLabel(action.result)}.`,
+      textEn: `Task “${room.task.title}” estimated as ${cardFaceLabel(action.result)}.`,
       ts: now(),
     });
     room.task = null;
@@ -415,7 +415,7 @@ export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
     const analysis = analyzeVotes(snapshot(room, me.id).players, true);
     const clean = (analysis?.askOrder ?? []).slice(0, 12).map((p) => ({
       name: p.name.slice(0, 24),
-      vote: String(p.vote || ""),
+      vote: cardFaceLabel(p.vote),
     }));
     if (!clean.length) return { ok: false, error: "invalid" };
     const parts = clean.map((p) => `${p.name} (${p.vote})`);

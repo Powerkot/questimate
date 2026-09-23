@@ -241,6 +241,7 @@ describe("poker engine", () => {
     assert.equal(finalized.ok, true);
     assert.match(room.history[0].resultVariantId ?? "", /^m-/);
     assert.equal(room.history[0].result, "m");
+    assert.match(room.chat.at(-1)?.text ?? "", /оценена как M\./);
   });
 
   it("keeps one valid card back for the whole room", () => {
@@ -318,6 +319,6 @@ describe("poker engine", () => {
       token: "host-token",
     });
     assert.equal(host.ok, true);
-    assert.match(room.chat.at(-1)?.text ?? "", /крайн/);
+    assert.match(room.chat.at(-1)?.text ?? "", /Guest \(XXL\)/);
   });
 });

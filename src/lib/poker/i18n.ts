@@ -149,8 +149,7 @@ export const I18N: Record<Lang, Dict> = {
     none: "нет",
     noSizedVotes: "Для картины согласия нужны оценки размера, не только ? и ☕.",
     allAgree: "Команда сошлась на одной оценке.",
-    votedWhileMost: (name, vote, mode) =>
-      `У ${name} — ${vote}, тогда как у большинства команды — ${mode}.`,
+    votedWhileMost: (name, vote, mode) => `${name} — ${vote}, большинство команды — ${mode}.`,
     askOutliers: "Сначала обсудить крайние оценки",
     connecting: "Входим в группу…",
     party: "группа",

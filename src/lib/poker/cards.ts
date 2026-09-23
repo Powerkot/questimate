@@ -44,7 +44,7 @@ export function estimateCardArt(value: string | null | undefined): string | null
 
 export function cardFaceLabel(value: string | null | undefined): string {
   if (!value) return "";
-  return value.length <= 3 ? value.toUpperCase() : value;
+  return value.toUpperCase();
 }
 
 export const CARD_LORE: Record<CardValue, CardLore> = {
