@@ -163,7 +163,8 @@ export const I18N: Record<Lang, Dict> = {
     roomCode: "Код комнаты",
     invited: (code) => `Вас пригласили в комнату ${code}`,
     demoTitle: "Посмотреть живую демо-комнату",
-    demoText: "Готовая задача, команда и раскрытые карты. Вход только по вашему нажатию.",
+    demoText:
+      "Готовая задача, команда, чат и история. Всё, что вы сделаете, останется только в этой вкладке.",
     tryDemo: "Войти в RAID1",
     nameRequired: "Сначала укажите имя, под которым вас увидит команда.",
     invalidRoom: "Введите пятисимвольный код комнаты.",
@@ -261,7 +262,8 @@ export const I18N: Record<Lang, Dict> = {
     roomCode: "Room code",
     invited: (code) => `You were invited to room ${code}`,
     demoTitle: "Explore a live demo room",
-    demoText: "A ready task, party and revealed cards. You only enter when you choose to.",
+    demoText:
+      "A ready task, party, chat and history. Everything you do stays only in this browser tab.",
     tryDemo: "Enter RAID1",
     nameRequired: "Enter the name your team should see first.",
     invalidRoom: "Enter a five-character room code.",

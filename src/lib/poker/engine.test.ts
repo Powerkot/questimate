@@ -1,8 +1,15 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { cardBackIds, cardVariantIds, estimateCardArt } from "./cards.ts";
-import { buildDemoRoom, prepareDemoJoin } from "./demo.ts";
-import { applyAction, createRoom, normalizeRoom, selectVariantId, snapshot } from "./engine.ts";
+import { applyDemoAction, buildDemoRoom, prepareDemoJoin } from "./demo.ts";
+import {
+  DEMO_CODE,
+  applyAction,
+  createRoom,
+  normalizeRoom,
+  selectVariantId,
+  snapshot,
+} from "./engine.ts";
 import type { StoredPlayer } from "./types.ts";
 
 function stored(id: string, token: string, time: number): StoredPlayer {
@@ -24,6 +31,50 @@ describe("poker engine", () => {
     assert.equal(room.votes.guest01, undefined);
     assert.equal(room.task?.id, "t-demo-now");
     assert.equal(room.votes.botolga, "s");
+  });
+
+  it("starts every demo visitor in an isolated pristine sandbox", () => {
+    const first = applyDemoAction(null, {
+      type: "join",
+      name: "First visitor",
+      playerId: "guest01",
+      token: "guest-token-01",
+    });
+    assert.equal(first.result.ok, true);
+    assert.ok(first.room);
+
+    const changed = applyDemoAction(first.room, {
+      type: "chat",
+      playerId: "guest01",
+      token: "guest-token-01",
+      text: "This must stay private",
+    });
+    assert.equal(changed.result.ok, true);
+    assert.equal(changed.room?.chat.at(-1)?.text, "This must stay private");
+
+    const second = applyDemoAction(changed.room, {
+      type: "join",
+      name: "Second visitor",
+      playerId: "guest02",
+      token: "guest-token-02",
+    });
+    assert.equal(second.result.ok, true);
+    assert.equal(second.room?.code, DEMO_CODE);
+    assert.equal(second.room?.players.length, 6);
+    assert.equal(
+      second.room?.players.some((player) => player.id === "guest01"),
+      false,
+    );
+    assert.equal(
+      second.room?.players.some((player) => player.id === "guest02"),
+      true,
+    );
+    assert.equal(
+      second.room?.chat.some((entry) => entry.text === "This must stay private"),
+      false,
+    );
+    assert.equal(second.room?.history.length, 3);
+    assert.equal(second.room?.votes.guest02, undefined);
   });
 
   it("asks the store to persist a throttled heartbeat", () => {
