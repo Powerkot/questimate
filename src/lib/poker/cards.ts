@@ -13,6 +13,15 @@ export type CardLore = {
   epic?: boolean;
 };
 
+const ESTIMATE_CARD_ART: Partial<Record<CardValue, string>> = {
+  xs: "/cards/estimate/xs.webp",
+  s: "/cards/estimate/s.webp",
+  m: "/cards/estimate/m.webp",
+  l: "/cards/estimate/l.webp",
+  xl: "/cards/estimate/xl.webp",
+  XXL: "/cards/estimate/xxl.webp",
+};
+
 export const CARD_BACKS = [
   { id: "royal-star", art: "/cards/back.jpg" },
   { id: "tavern-compass", art: "/cards/v2/back-tavern.jpg" },
@@ -26,6 +35,16 @@ export function cardBackIds(): string[] {
 
 export function cardBackArt(backId?: string | null): string {
   return CARD_BACKS.find((back) => back.id === backId)?.art ?? CARD_BACKS[0].art;
+}
+
+export function estimateCardArt(value: string | null | undefined): string | null {
+  if (!value) return null;
+  return ESTIMATE_CARD_ART[value as CardValue] ?? null;
+}
+
+export function cardFaceLabel(value: string | null | undefined): string {
+  if (!value) return "";
+  return value.length <= 3 ? value.toUpperCase() : value;
 }
 
 export const CARD_LORE: Record<CardValue, CardLore> = {

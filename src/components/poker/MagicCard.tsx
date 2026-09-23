@@ -1,10 +1,11 @@
-import { cardBackArt, cardLore } from "@/lib/poker/cards";
+import { cardBackArt, cardFaceLabel, cardLore, estimateCardArt } from "@/lib/poker/cards";
 import type { Lang } from "@/lib/poker/i18n";
 import type { CardValue } from "@/lib/poker/types";
 import { cn } from "@/lib/cn";
 
 type Size = "seat" | "deck" | "mini" | "hero";
 type Face = "back" | "front" | "empty";
+type Artwork = "estimate" | "character";
 
 type Props = {
   value?: CardValue | string | null;
@@ -13,6 +14,7 @@ type Props = {
   face: Face;
   lang?: Lang;
   size?: Size;
+  artwork?: Artwork;
   selected?: boolean;
   outlier?: boolean;
   disabled?: boolean;
@@ -26,23 +28,31 @@ export function MagicCard({
   face,
   lang = "ru",
   size = "seat",
+  artwork = "estimate",
   selected,
   outlier,
   disabled,
   onClick,
 }: Props) {
   const lore = cardLore(value, variantId);
-  const label = lore
-    ? `${value} — ${lore.name[lang]}, ${lore.title[lang]}`
-    : face === "back"
-      ? "Hidden card"
-      : "Empty seat";
+  const valueLabel = cardFaceLabel(value);
+  const art = artwork === "character" ? lore?.art : estimateCardArt(value);
+  const label =
+    artwork === "character" && lore
+      ? `${valueLabel} — ${lore.name[lang]}, ${lore.title[lang]}`
+      : value
+        ? valueLabel
+        : face === "back"
+          ? "Hidden card"
+          : "Empty seat";
   const className = cn(
     "mc",
     size === "seat" && "mc-seat",
     size === "deck" && "mc-deck",
     size === "mini" && "mc-mini",
     size === "hero" && "mc-hero",
+    artwork === "character" ? "mc-character" : "mc-estimate",
+    value && !art && "mc-symbol",
     face === "front" && "is-face",
     face === "empty" && "is-empty",
     selected && "is-selected",
@@ -57,15 +67,18 @@ export function MagicCard({
         <img src={cardBackArt(backId)} alt="" draggable={false} loading="lazy" />
       </span>
       <span className="mc-side mc-front">
-        {lore ? (
-          <>
-            <img
-              src={lore.art}
-              alt=""
-              draggable={false}
-              loading={size === "deck" ? "eager" : "lazy"}
-            />
-          </>
+        {art ? (
+          <img
+            src={art}
+            alt=""
+            draggable={false}
+            decoding="async"
+            loading={size === "deck" ? "eager" : "lazy"}
+          />
+        ) : value ? (
+          <span className="mc-symbol-front" aria-hidden="true">
+            <span>{valueLabel}</span>
+          </span>
         ) : (
           <span className="mc-blank">—</span>
         )}

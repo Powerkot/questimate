@@ -38,6 +38,7 @@ export type HistoryEntry = {
   title: string;
   description: string;
   result: string;
+  resultVariantId?: string;
   votes: { name: string; value: string; variantId?: string }[];
   ts: number;
 };

@@ -385,6 +385,7 @@ export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
       title: room.task.title,
       description: room.task.description,
       result: action.result,
+      resultVariantId: selectVariantId(room, "consensus", action.result),
       votes: Object.entries(room.votes).map(([id, value]) => ({
         name: room.players.find((p) => p.id === id)?.name || "?",
         value,

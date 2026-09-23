@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { cardBackIds, cardVariantIds } from "./cards.ts";
+import { cardBackIds, cardVariantIds, estimateCardArt } from "./cards.ts";
 import { buildDemoRoom, prepareDemoJoin } from "./demo.ts";
 import { applyAction, createRoom, normalizeRoom, selectVariantId, snapshot } from "./engine.ts";
 import type { StoredPlayer } from "./types.ts";
@@ -210,6 +210,37 @@ describe("poker engine", () => {
     }
     assert.equal(cardVariantIds("s").length, 4);
     assert.ok(variants.size > 1);
+  });
+
+  it("serves the lightweight estimate deck without character art", () => {
+    assert.equal(estimateCardArt("xs"), "/cards/estimate/xs.webp");
+    assert.equal(estimateCardArt("XXL"), "/cards/estimate/xxl.webp");
+    assert.equal(estimateCardArt("?"), null);
+    assert.equal(estimateCardArt("☕"), null);
+  });
+
+  it("stores one character variant for the final consensus reveal", () => {
+    const room = createRoom("ABCDE", stored("host01", "host-token", Date.now()));
+    applyAction(room, {
+      type: "set-task",
+      playerId: "host01",
+      token: "host-token",
+      title: "Quest",
+      description: "",
+    });
+    applyAction(room, { type: "vote", playerId: "host01", token: "host-token", value: "m" });
+    applyAction(room, { type: "reveal", playerId: "host01", token: "host-token" });
+
+    const finalized = applyAction(room, {
+      type: "finalize",
+      playerId: "host01",
+      token: "host-token",
+      result: "m",
+    });
+
+    assert.equal(finalized.ok, true);
+    assert.match(room.history[0].resultVariantId ?? "", /^m-/);
+    assert.equal(room.history[0].result, "m");
   });
 
   it("keeps one valid card back for the whole room", () => {
