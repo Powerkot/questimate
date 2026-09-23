@@ -25,6 +25,7 @@ import { Input, Textarea } from "@/components/ui/input";
 import { createPokerRoomFn, pokerActionFn, type PokerActionInput } from "@/lib/poker/actions";
 import { cardFaceLabel, cardLore } from "@/lib/poker/cards";
 import { analyzeVotes, buildVoteShowcase, type ShowcaseVote } from "@/lib/poker/consensus";
+import { applyDemoAction } from "@/lib/poker/demo";
 import { DEMO_CODE } from "@/lib/poker/engine";
 import {
   clearLastRoom,
@@ -45,8 +46,10 @@ import { canUseTable, tableSeatAssignments } from "@/lib/poker/table-layout";
 import {
   type CardValue,
   type HistoryEntry,
+  type PokerResult,
   type PublicPlayer,
   type Snapshot,
+  type StoredRoom,
 } from "@/lib/poker/types";
 import { APP_NAME } from "@/lib/brand";
 import { cn } from "@/lib/cn";
@@ -84,6 +87,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
   const [finalReveal, setFinalReveal] = useState<HistoryEntry | null>(null);
   const [voteShowcaseOpen, setVoteShowcaseOpen] = useState(false);
   const identity = useRef<{ playerId: string; token: string } | null>(null);
+  const demoRoom = useRef<StoredRoom | null>(null);
   const restoreAttempted = useRef(false);
   const snowSeen = useRef(0);
   const codeRef = useRef<string | undefined>(undefined);
@@ -108,6 +112,11 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
     setLang(loadLang());
     setName(loadName());
     const savedRoom = loadLastRoom();
+    if (savedRoom === DEMO_CODE) {
+      clearLastRoom(DEMO_CODE);
+      setRestoring(false);
+      return;
+    }
     if (savedRoom && (!roomCode || roomCode === savedRoom)) setResumeCode(savedRoom);
     else setRestoring(false);
   }, [roomCode, state]);
@@ -130,7 +139,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
   }, []);
 
   const applyResult = useCallback(
-    (res: Awaited<ReturnType<typeof pokerActionFn>>, keepPicked = false, silent = false) => {
+    (res: PokerResult, keepPicked = false, silent = false) => {
       if (!res.ok) {
         if (!silent) setError(res.error);
         if (res.error === "room_not_found") {
@@ -142,7 +151,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
         return false;
       }
       setYou(res.you);
-      saveLastRoom(res.state.code);
+      if (res.state.code !== DEMO_CODE) saveLastRoom(res.state.code);
       const key = JSON.stringify(res.state);
       if (key !== snapKey.current) {
         snapKey.current = key;
@@ -163,6 +172,11 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
   const act = useCallback(
     async (data: PokerActionInput, opts?: { keepPicked?: boolean; silent?: boolean }) => {
       try {
+        if (data.code === DEMO_CODE) {
+          const demo = applyDemoAction(demoRoom.current, data);
+          demoRoom.current = demo.room;
+          return applyResult(demo.result, opts?.keepPicked, opts?.silent);
+        }
         const res = await pokerActionFn({ data });
         return applyResult(res, opts?.keepPicked, opts?.silent);
       } catch {
@@ -359,6 +373,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
       );
     }
     if (state) clearLastRoom(state.code);
+    demoRoom.current = null;
     setState(null);
     setYou(null);
     setPicked(null);

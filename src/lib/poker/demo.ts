@@ -1,13 +1,23 @@
 import {
   DEMO_CODE,
   DEMO_SNOW_AFTER_MS,
+  applyAction,
   makeId,
   now,
   randomCardBackId,
   selectVariantId,
+  snapshot,
   throwSnowball,
+  type RoomAction,
 } from "./engine.ts";
-import type { CardValue, ChatEntry, HistoryEntry, StoredPlayer, StoredRoom } from "./types.ts";
+import type {
+  CardValue,
+  ChatEntry,
+  HistoryEntry,
+  PokerResult,
+  StoredPlayer,
+  StoredRoom,
+} from "./types.ts";
 
 export const DEMO_BOTS: { id: string; name: string; token: string; vote: CardValue }[] = [
   { id: "botolga", name: "Ольга", token: "demo-token-olga", vote: "s" },
@@ -319,4 +329,30 @@ export function tickDemoRoom(room: StoredRoom): boolean {
     changed = true;
   }
   return changed;
+}
+
+/**
+ * Runs one action in a visitor-only demo session.
+ *
+ * A join always starts from the canonical fixture, even if a previous local
+ * session is passed in. The returned room only lives in the current browser
+ * tab and must never be written to the shared room store.
+ */
+export function applyDemoAction(
+  currentRoom: StoredRoom | null,
+  action: RoomAction,
+): { room: StoredRoom | null; result: PokerResult } {
+  const room = action.type === "join" ? buildDemoRoom() : currentRoom;
+  if (!room) return { room: null, result: { ok: false, error: "room_not_found" } };
+
+  const applied = applyAction(room, action);
+  if (!applied.ok) return { room, result: { ok: false, error: applied.error } };
+
+  if (action.type === "join") prepareDemoJoin(room, applied.you);
+  tickDemoRoom(room);
+
+  return {
+    room: action.type === "leave" ? null : room,
+    result: { ok: true, you: applied.you, state: snapshot(room, applied.you) },
+  };
 }

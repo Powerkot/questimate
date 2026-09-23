@@ -1,5 +1,4 @@
 import { getSql } from "@/lib/db";
-import { buildDemoRoom, prepareDemoJoin, tickDemoRoom } from "./demo";
 import {
   DEMO_CODE,
   applyAction,
@@ -25,8 +24,8 @@ async function load(code: string): Promise<{ room: StoredRoom; version: number }
     `select version, state
        from poker_rooms
       where code = $1
-        and (code = $2 or created_at > now() - interval '24 hours')`,
-    [code, DEMO_CODE],
+        and created_at > now() - interval '24 hours'`,
+    [code],
   );
   const row = rows[0];
   if (!row) return null;
@@ -59,25 +58,13 @@ async function save(code: string, version: number, room: StoredRoom): Promise<bo
 }
 
 async function remove(code: string): Promise<void> {
-  if (code === DEMO_CODE) return;
   const sql = await getSql();
   await sql.query(`delete from poker_rooms where code = $1`, [code]);
 }
 
 async function purgeExpiredRooms(): Promise<void> {
   const sql = await getSql();
-  await sql.query(
-    `delete from poker_rooms where code <> $1 and created_at <= now() - interval '24 hours'`,
-    [DEMO_CODE],
-  );
-}
-
-async function ensureDemoRoom(): Promise<void> {
-  const existing = await load(DEMO_CODE);
-  if (existing) return;
-  const room = buildDemoRoom();
-  const ok = await insert(room);
-  if (!ok) return;
+  await sql.query(`delete from poker_rooms where created_at <= now() - interval '24 hours'`);
 }
 
 export async function createPokerRoom(input: {
@@ -110,7 +97,9 @@ export async function handlePokerAction(
   action: RoomAction & { code: string },
 ): Promise<PokerResult> {
   await purgeExpiredRooms();
-  if (action.code === DEMO_CODE) await ensureDemoRoom();
+  // RAID1 is intentionally a browser-local sandbox. Reject legacy clients so
+  // they cannot recreate the former shared, persistent demo room.
+  if (action.code === DEMO_CODE) return { ok: false, error: "room_not_found" };
   for (let attempt = 0; attempt < 6; attempt++) {
     const loaded = await load(action.code);
     if (!loaded) return { ok: false, error: "room_not_found" };
@@ -123,12 +112,8 @@ export async function handlePokerAction(
     }
     const result = applyAction(room, action);
     if (!result.ok) return { ok: false, error: result.error };
-    if (action.code === DEMO_CODE && action.type === "join") {
-      prepareDemoJoin(result.room, result.you);
-    }
-    const demoChanged = action.code === DEMO_CODE ? tickDemoRoom(result.room) : false;
     if (action.type === "sync" || action.type === "resume") {
-      if (demoChanged || result.persist) {
+      if (result.persist) {
         const saved = await save(action.code, version, result.room);
         if (!saved) continue;
       }
