@@ -512,6 +512,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
       <main className="quest-layout">
         <div className="quest-stage">
           <TaskCard
+            key={state.task?.id ?? "no-task"}
             t={t}
             task={state.task}
             collapsed={taskCollapsed}
@@ -1386,9 +1387,56 @@ function TaskCard({
   collapsed: boolean;
   onToggle: () => void;
 }) {
+  const copyRevealRef = useRef<HTMLDivElement>(null);
+  const copyRef = useRef<HTMLParagraphElement>(null);
+  const description = task?.description ?? "";
+  const [clampSettled, setClampSettled] = useState(collapsed);
+
+  useEffect(() => {
+    const reveal = copyRevealRef.current;
+    const copy = copyRef.current;
+    if (!reveal || !copy || !description) return;
+
+    let frame = 0;
+    let cancelled = false;
+    const measure = () => {
+      if (cancelled) return;
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        const copyStyle = window.getComputedStyle(copy);
+        const revealStyle = window.getComputedStyle(reveal);
+        const lineHeight = Number.parseFloat(copyStyle.lineHeight);
+        const lines = Number.parseFloat(revealStyle.getPropertyValue("--task-copy-lines")) || 1;
+        const collapsedHeight = Number.isFinite(lineHeight)
+          ? lineHeight * lines
+          : copy.clientHeight;
+
+        reveal.style.setProperty("--task-copy-collapsed-height", `${Math.ceil(collapsedHeight)}px`);
+        reveal.style.setProperty(
+          "--task-copy-expanded-height",
+          `${Math.ceil(copy.scrollHeight) + 1}px`,
+        );
+      });
+    };
+
+    measure();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(copy);
+    window.addEventListener("resize", measure);
+    void document.fonts?.ready.then(measure);
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+      observer?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [description]);
+
   if (!task) return null;
   const long = task.description.length > 220 || task.description.split("\n").length > 3;
   const clamp = long && collapsed;
+  const descriptionId = `task-description-${task.id}`;
   return (
     <article className="quest-card task-card">
       <span className="task-scroll-art" aria-hidden="true">
@@ -1398,10 +1446,39 @@ function TaskCard({
         <span className="eyebrow">{t.currentTask}</span>
         <h1>{task.title}</h1>
         {task.description ? (
-          <p className={cn("task-copy", clamp && "is-clamped")}>{task.description}</p>
+          <div
+            ref={copyRevealRef}
+            id={descriptionId}
+            className={cn(
+              "task-copy-reveal",
+              long ? (clamp ? "is-collapsed" : "is-expanded") : "is-static",
+            )}
+            onTransitionEnd={(event) => {
+              if (
+                event.target === event.currentTarget &&
+                event.propertyName === "max-height" &&
+                clamp
+              ) {
+                setClampSettled(true);
+              }
+            }}
+          >
+            <p ref={copyRef} className={cn("task-copy", clamp && clampSettled && "is-clamped")}>
+              {task.description}
+            </p>
+          </div>
         ) : null}
         {long ? (
-          <button type="button" className="text-link" onClick={onToggle}>
+          <button
+            type="button"
+            className="text-link"
+            aria-controls={descriptionId}
+            aria-expanded={!clamp}
+            onClick={() => {
+              if (clamp) setClampSettled(false);
+              onToggle();
+            }}
+          >
             {clamp ? t.expand : t.collapse}
           </button>
         ) : null}
