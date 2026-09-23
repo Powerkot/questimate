@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { analyzeVotes } from "./consensus.ts";
+import { analyzeVotes, buildVoteShowcase } from "./consensus.ts";
 import type { CardValue, PublicPlayer } from "./types.ts";
 
-function player(id: string, vote: CardValue): PublicPlayer {
+function player(id: string, vote: CardValue, variantId: string | null = null): PublicPlayer {
   return {
     id,
     name: id,
@@ -11,7 +11,7 @@ function player(id: string, vote: CardValue): PublicPlayer {
     online: true,
     voted: true,
     vote,
-    variantId: null,
+    variantId,
     snowUntil: 0,
   };
 }
@@ -50,5 +50,50 @@ describe("analyzeVotes", () => {
     const result = analyzeVotes([player("a", "s"), player("b", "m")], true);
     assert.ok(result);
     assert.equal(result.median, "s–m");
+  });
+
+  it("keeps persisted character variants for the majority, minimum and maximum", () => {
+    const result = analyzeVotes(
+      [
+        player("a", "s", "s-one"),
+        player("b", "s", "s-two"),
+        player("c", "m", "m-one"),
+        player("d", "XXL", "xxl-one"),
+      ],
+      true,
+    );
+    assert.ok(result);
+
+    const showcase = buildVoteShowcase(result);
+    assert.deepEqual(showcase, {
+      majority: {
+        playerId: "a",
+        playerName: "a",
+        value: "s",
+        variantId: "s-one",
+      },
+      minimum: {
+        playerId: "b",
+        playerName: "b",
+        value: "s",
+        variantId: "s-two",
+      },
+      maximum: {
+        playerId: "d",
+        playerName: "d",
+        value: "XXL",
+        variantId: "xxl-one",
+      },
+    });
+  });
+
+  it("shows only the majority card when there is no numeric range", () => {
+    const result = analyzeVotes([player("a", "?", "question-one")], true);
+    assert.ok(result);
+
+    const showcase = buildVoteShowcase(result);
+    assert.equal(showcase?.majority.value, "?");
+    assert.equal(showcase?.minimum, null);
+    assert.equal(showcase?.maximum, null);
   });
 });

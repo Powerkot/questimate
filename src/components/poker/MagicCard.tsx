@@ -17,6 +17,7 @@ type Props = {
   artwork?: Artwork;
   selected?: boolean;
   outlier?: boolean;
+  eager?: boolean;
   disabled?: boolean;
   onClick?: () => void;
 };
@@ -31,6 +32,7 @@ export function MagicCard({
   artwork = "estimate",
   selected,
   outlier,
+  eager,
   disabled,
   onClick,
 }: Props) {
@@ -73,7 +75,7 @@ export function MagicCard({
             alt=""
             draggable={false}
             decoding="async"
-            loading={size === "deck" ? "eager" : "lazy"}
+            loading={eager || size === "deck" ? "eager" : "lazy"}
           />
         ) : value ? (
           <span className="mc-symbol-front" aria-hidden="true">
