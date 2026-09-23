@@ -3,6 +3,7 @@ import {
   CircleHelp,
   Copy,
   Crown,
+  Globe2,
   LockKeyhole,
   LayoutGrid,
   LogOut,
@@ -451,50 +452,67 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
       )}
     >
       <header className="quest-header">
-        <BrandLockup
-          tagline={lang === "ru" ? "оценка как приключение" : "estimation as an adventure"}
-        />
+        <div className="room-header-context">
+          <BrandLockup />
+          <div className="room-identity">
+            <span className="room-label">{lang === "ru" ? "Комната" : "Room"}</span>
+            <button
+              type="button"
+              className="room-code"
+              onClick={async () => {
+                const url = `${location.origin}/?room=${state.code}`;
+                try {
+                  await navigator.clipboard.writeText(url);
+                  setCopied(true);
+                  window.setTimeout(() => setCopied(false), 1600);
+                } catch {
+                  setError("network");
+                }
+              }}
+              aria-label={copied ? t.copied : t.copy}
+            >
+              {state.passwordProtected ? (
+                <LockKeyhole className="room-lock" aria-label={t.protectedRoom} />
+              ) : null}
+              <span className="room-code-value">{state.code}</span>
+              <span className="room-copy-control" aria-hidden="true">
+                {copied ? <Check /> : <Copy />}
+              </span>
+            </button>
+          </div>
+        </div>
         <div className="room-tools">
-          <button
-            type="button"
-            className="room-code"
-            onClick={async () => {
-              const url = `${location.origin}/?room=${state.code}`;
-              try {
-                await navigator.clipboard.writeText(url);
-                setCopied(true);
-                window.setTimeout(() => setCopied(false), 1600);
-              } catch {
-                setError("network");
-              }
-            }}
-            aria-label={t.copy}
-          >
-            {state.passwordProtected ? <LockKeyhole aria-label={t.protectedRoom} /> : null}
-            <span>{state.code}</span>
-            {copied ? <Check /> : <Copy />}
-          </button>
           <Button
             type="button"
             variant="tiny"
             size="tiny"
+            className="header-tool header-presentation"
             aria-label={presentation ? t.exitPresentation : t.presentation}
             onClick={() => setPresentation((value) => !value)}
           >
-            <Presentation className="size-4" />
+            <Presentation aria-hidden="true" />
             <span className="hide-phone">{presentation ? t.exitPresentation : t.presentation}</span>
           </Button>
-          <Button type="button" variant="lang" size="tiny" onClick={toggleLang}>
+          <Button
+            type="button"
+            variant="tiny"
+            size="tiny"
+            className="header-tool header-language"
+            aria-label={lang === "ru" ? "Switch to English" : "Переключить на русский"}
+            onClick={toggleLang}
+          >
+            <Globe2 aria-hidden="true" />
             {lang === "ru" ? "EN" : "RU"}
           </Button>
           <Button
             type="button"
             variant="tiny"
             size="tiny"
+            className="header-tool header-leave"
             aria-label={t.leave}
             onClick={() => void leaveRoom()}
           >
-            <LogOut className="size-4" />
+            <LogOut aria-hidden="true" />
             <span className="hide-phone">{t.leave}</span>
           </Button>
         </div>
