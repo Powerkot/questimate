@@ -2028,29 +2028,46 @@
   background: transparent;
   padding: 0;
 }
+/*
+ * These six geometries are calibrated against the glowing lines in the native
+ * background artwork. Each card overscans its line by roughly 3–5 source pixels;
+ * the differing aspect ratios reproduce the table perspective and hide the slot.
+ */
 .view-table .player-seat[data-table-slot="0"] {
   top: 15.2%;
   left: 50%;
+  --table-card-width: 54%;
+  --table-card-ratio: 1;
 }
 .view-table .player-seat[data-table-slot="1"] {
-  top: 28.1%;
-  left: 74.4%;
+  top: 28%;
+  left: 74.35%;
+  --table-card-width: 60%;
+  --table-card-ratio: 1.04;
 }
 .view-table .player-seat[data-table-slot="2"] {
-  top: 49.2%;
+  top: 49.1%;
   left: 76.1%;
+  --table-card-width: 67%;
+  --table-card-ratio: 1;
 }
 .view-table .player-seat[data-table-slot="3"] {
-  top: 63.2%;
+  top: 62.9%;
   left: 50%;
+  --table-card-width: 67%;
+  --table-card-ratio: 0.94;
 }
 .view-table .player-seat[data-table-slot="4"] {
-  top: 49.2%;
-  left: 23.9%;
+  top: 49.1%;
+  left: 23.7%;
+  --table-card-width: 67%;
+  --table-card-ratio: 1;
 }
 .view-table .player-seat[data-table-slot="5"] {
-  top: 28.1%;
-  left: 25.4%;
+  top: 28%;
+  left: 25.6%;
+  --table-card-width: 60%;
+  --table-card-ratio: 1.04;
 }
 .view-table .player-seat::before {
   display: none;
@@ -2104,12 +2121,15 @@
 }
 .view-table .mc-seat,
 .view-table .mc-hero {
-  width: 37%;
+  width: var(--table-card-width);
   height: auto;
-  aspect-ratio: 2 / 3;
+  aspect-ratio: var(--table-card-ratio);
 }
 .view-table .mc-side {
   box-shadow: 0 7px 16px #000c;
+}
+.view-table .mc-side img {
+  object-fit: fill;
 }
 .view-table .mc.is-empty {
   visibility: hidden;
@@ -2465,32 +2485,40 @@
     width: 25%;
   }
   .view-table .player-seat[data-table-slot="0"] {
-    top: 18.6%;
-    left: 50%;
+    top: 18.4%;
+    left: 49.9%;
+    --table-card-width: 49%;
+    --table-card-ratio: 0.85;
   }
   .view-table .player-seat[data-table-slot="1"] {
     top: 31.1%;
-    left: 82%;
+    left: 81.5%;
+    --table-card-width: 54%;
+    --table-card-ratio: 0.83;
   }
   .view-table .player-seat[data-table-slot="2"] {
-    top: 50.2%;
-    left: 82.6%;
+    top: 50%;
+    left: 83%;
+    --table-card-width: 53%;
+    --table-card-ratio: 0.7;
   }
   .view-table .player-seat[data-table-slot="3"] {
-    top: 64.1%;
-    left: 50%;
+    top: 63.4%;
+    left: 49.9%;
+    --table-card-width: 64%;
+    --table-card-ratio: 0.8;
   }
   .view-table .player-seat[data-table-slot="4"] {
-    top: 50.2%;
-    left: 17.4%;
+    top: 50%;
+    left: 15.7%;
+    --table-card-width: 58%;
+    --table-card-ratio: 0.77;
   }
   .view-table .player-seat[data-table-slot="5"] {
     top: 31.1%;
-    left: 18%;
-  }
-  .view-table .mc-seat,
-  .view-table .mc-hero {
-    width: 54%;
+    left: 18.3%;
+    --table-card-width: 53.5%;
+    --table-card-ratio: 0.82;
   }
   .view-table .player-meta {
     width: 92%;
