@@ -13,13 +13,15 @@ export type CardLore = {
   epic?: boolean;
 };
 
-const ESTIMATE_CARD_ART: Partial<Record<CardValue, string>> = {
+const ESTIMATE_CARD_ART: Record<CardValue, string> = {
   xs: "/cards/estimate/xs.webp",
   s: "/cards/estimate/s.webp",
   m: "/cards/estimate/m.webp",
   l: "/cards/estimate/l.webp",
   xl: "/cards/estimate/xl.webp",
   XXL: "/cards/estimate/xxl.webp",
+  "?": "/cards/estimate/question.webp",
+  "☕": "/cards/estimate/break.webp",
 };
 
 export const CARD_BACKS = [

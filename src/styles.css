@@ -762,20 +762,20 @@
 }
 .mc-seat {
   width: 3.25rem;
-  height: 4.875rem;
+  aspect-ratio: 3 / 4;
   flex: 0 0 auto;
 }
 .mc-deck {
   width: 100%;
-  aspect-ratio: 2 / 3;
+  aspect-ratio: 3 / 4;
 }
 .mc-mini {
   width: 2.45rem;
-  height: 3.675rem;
+  aspect-ratio: 3 / 4;
 }
 .mc-hero {
   width: 100%;
-  aspect-ratio: 2 / 3;
+  aspect-ratio: 3 / 4;
 }
 .mc-character.mc-hero {
   aspect-ratio: 3 / 4;
@@ -2190,7 +2190,7 @@
   order: 0;
   width: min(100%, 11.5rem);
   height: auto;
-  aspect-ratio: 2 / 3;
+  aspect-ratio: 3 / 4;
 }
 .view-cards .mc-side {
   box-shadow:

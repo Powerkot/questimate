@@ -215,8 +215,8 @@ describe("poker engine", () => {
   it("serves the lightweight estimate deck without character art", () => {
     assert.equal(estimateCardArt("xs"), "/cards/estimate/xs.webp");
     assert.equal(estimateCardArt("XXL"), "/cards/estimate/xxl.webp");
-    assert.equal(estimateCardArt("?"), null);
-    assert.equal(estimateCardArt("☕"), null);
+    assert.equal(estimateCardArt("?"), "/cards/estimate/question.webp");
+    assert.equal(estimateCardArt("☕"), "/cards/estimate/break.webp");
   });
 
   it("stores one character variant for the final consensus reveal", () => {
