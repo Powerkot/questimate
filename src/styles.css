@@ -1143,12 +1143,12 @@
   width: clamp(6.2rem, 10vw, 8.2rem);
 }
 .vote-showcase-item.is-minimum {
-  --delay: 1.25s;
+  --delay: 1.62s;
   left: 26%;
   z-index: 2;
 }
 .vote-showcase-item.is-maximum {
-  --delay: 2.35s;
+  --delay: 3.12s;
   left: 74%;
   z-index: 2;
 }
@@ -1156,10 +1156,14 @@
   position: relative;
   transform-style: preserve-3d;
   will-change: transform, opacity;
-  animation: vote-card-flight 1.18s var(--delay) cubic-bezier(0.16, 0.75, 0.18, 1) both;
+  animation: vote-card-flight 1.32s var(--delay) cubic-bezier(0.16, 0.75, 0.18, 1) both;
 }
 .vote-showcase-flight .mc-hero {
   width: 100%;
+  transform-style: preserve-3d;
+}
+.vote-showcase-flight .mc-inner {
+  animation: vote-card-spin 1.32s var(--delay) linear both;
 }
 .vote-showcase-flight .mc-side {
   box-shadow:
@@ -1184,7 +1188,7 @@
   justify-items: center;
   margin-top: 0.72rem;
   opacity: 0;
-  animation: vote-caption-in 0.38s calc(var(--delay) + 0.94s) ease-out both;
+  animation: vote-caption-in 0.38s calc(var(--delay) + 1.18s) ease-out both;
 }
 .vote-showcase-caption > span {
   color: #e9bd58;
@@ -1218,22 +1222,32 @@
 @keyframes vote-card-flight {
   0% {
     opacity: 0;
-    transform: translate(-72vw, 62vh) scale(0.08) rotateZ(-42deg) rotateY(0deg);
+    transform: translate(-72vw, 62vh) scale(0.08) rotateZ(-42deg);
   }
   14% {
     opacity: 1;
   }
-  64% {
+  68% {
     opacity: 1;
-    transform: translate(-0.7rem, -1rem) scale(1.06) rotateZ(-5deg) rotateY(570deg);
+    transform: translate(-1rem, 0.8rem) scale(0.94) rotateZ(-8deg);
   }
-  84% {
+  88% {
     opacity: 1;
-    transform: translate(0.15rem, 0.15rem) scale(0.97) rotateZ(2deg) rotateY(700deg);
+    transform: translate(-0.15rem, 0.12rem) scale(0.99) rotateZ(-1.4deg);
   }
   100% {
     opacity: 1;
-    transform: translate(0, 0) scale(1) rotateZ(0) rotateY(720deg);
+    transform: translate(0, 0) scale(1) rotateZ(0);
+  }
+}
+@keyframes vote-card-spin {
+  /* Back -> face -> back -> face, with one continuously increasing angle. */
+  0%,
+  12% {
+    transform: rotateY(0deg);
+  }
+  to {
+    transform: rotateY(540deg);
   }
 }
 @keyframes vote-caption-in {
@@ -2962,5 +2976,10 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+  .vote-showcase-flight,
+  .vote-showcase-flight .mc-inner,
+  .vote-showcase-caption {
+    animation-delay: 0s !important;
   }
 }
