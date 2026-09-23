@@ -1,72 +1,35 @@
-export type TableMode = "round" | "long" | "hall";
+export const TABLE_CAPACITY = 6;
 
-export type TableSeatPosition = {
-  left: string;
-  top: string;
+export type TableSeatAssignment = {
+  playerId: string;
+  slot: number;
 };
 
-const ROUND_SEAT_POSITIONS: Record<number, Array<[number, number]>> = {
-  1: [[50, 76]],
-  2: [
-    [24, 53],
-    [76, 53],
-  ],
-  3: [
-    [50, 20],
-    [25, 72],
-    [75, 72],
-  ],
-  4: [
-    [27, 24],
-    [73, 24],
-    [27, 76],
-    [73, 76],
-  ],
-  5: [
-    [50, 18],
-    [21, 39],
-    [29, 78],
-    [71, 78],
-    [79, 39],
-  ],
-  6: [
-    [25, 31],
-    [50, 29],
-    [75, 31],
-    [75, 59],
-    [25, 59],
-    [50, 66],
-  ],
+// Slots follow the artwork clockwise: top, upper-right, lower-right,
+// bottom, lower-left, upper-left. The viewer is always placed at the
+// bottom so the table reads naturally from every participant's screen.
+const SLOTS_BY_PLAYER_COUNT: Record<number, number[]> = {
+  1: [3],
+  2: [0, 3],
+  3: [5, 1, 3],
+  4: [0, 5, 1, 3],
+  5: [5, 1, 4, 2, 3],
+  6: [0, 5, 1, 4, 2, 3],
 };
 
-export function tableLayoutMode(playerCount: number): TableMode {
-  if (playerCount <= 6) return "round";
-  if (playerCount <= 12) return "long";
-  return "hall";
+export function canUseTable(playerCount: number): boolean {
+  return playerCount > 0 && playerCount <= TABLE_CAPACITY;
 }
 
-function rowPosition(index: number, count: number): number {
-  if (count <= 1) return 50;
-  return 13 + (index * 74) / (count - 1);
-}
+export function tableSeatAssignments(playerIds: string[], viewerId: string): TableSeatAssignment[] {
+  if (!canUseTable(playerIds.length)) return [];
 
-export function tableSeatPosition(
-  index: number,
-  count: number,
-  mode: TableMode,
-): TableSeatPosition | undefined {
-  if (mode === "hall") return undefined;
-  if (mode === "round") {
-    const [left, top] = ROUND_SEAT_POSITIONS[count]?.[index] ?? [50, 50];
-    return { left: `${left}%`, top: `${top}%` };
-  }
+  const viewerIndex = playerIds.indexOf(viewerId);
+  const ordered =
+    viewerIndex === -1
+      ? [...playerIds]
+      : [...playerIds.slice(0, viewerIndex), ...playerIds.slice(viewerIndex + 1), viewerId];
+  const slots = SLOTS_BY_PLAYER_COUNT[ordered.length];
 
-  const topCount = Math.ceil(count / 2);
-  const isTop = index < topCount;
-  const rowIndex = isTop ? index : index - topCount;
-  const rowCount = isTop ? topCount : count - topCount;
-  return {
-    left: `${rowPosition(rowIndex, rowCount)}%`,
-    top: isTop ? "26%" : "74%",
-  };
+  return ordered.map((playerId, index) => ({ playerId, slot: slots[index] }));
 }

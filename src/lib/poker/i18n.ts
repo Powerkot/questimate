@@ -80,6 +80,10 @@ type Dict = {
   voteFailed: string;
   team: string;
   allVoted: string;
+  roomViewMode: string;
+  tableView: string;
+  cardsView: string;
+  tableCapacityHint: string;
   waitingForTask: string;
   chat: string;
   specialVotes: string;
@@ -171,6 +175,10 @@ export const I18N: Record<Lang, Dict> = {
     voteFailed: "Карта не сохранилась — попробуйте ещё раз",
     team: "Команда у стола",
     allVoted: "Все готовы",
+    roomViewMode: "Вид игроков",
+    tableView: "Стол",
+    cardsView: "Карты",
+    tableCapacityHint: "Стол рассчитан на команды до 6 человек",
     waitingForTask: "Ждём, когда ведущий выставит следующий квест.",
     chat: "Чат",
     specialVotes: "Особые сигналы",
@@ -260,6 +268,10 @@ export const I18N: Record<Lang, Dict> = {
     voteFailed: "The card was not saved — try again",
     team: "Party at the table",
     allVoted: "Everyone is ready",
+    roomViewMode: "Player view",
+    tableView: "Table",
+    cardsView: "Cards",
+    tableCapacityHint: "The illustrated table seats parties of up to 6",
     waitingForTask: "Waiting for the host to post the next quest.",
     chat: "Chat",
     specialVotes: "Special signals",
