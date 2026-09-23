@@ -2215,7 +2215,7 @@
   transform: translateX(-50%);
   flex-direction: column;
   align-items: center;
-  gap: 0.05rem;
+  gap: 0;
   border: 0;
   background: transparent;
   padding: 0;
@@ -2232,6 +2232,7 @@
   --table-slot-ratio: 1;
   --table-card-render-width: 106%;
   --table-card-tilt: 42deg;
+  --table-name-gap: 10%;
   --table-name-width: 80%;
 }
 .view-table .player-seat[data-table-slot="1"] {
@@ -2241,6 +2242,7 @@
   --table-slot-ratio: 1.04;
   --table-card-render-width: 106%;
   --table-card-tilt: 45deg;
+  --table-name-gap: 13%;
   --table-name-width: 82%;
 }
 .view-table .player-seat[data-table-slot="2"] {
@@ -2250,6 +2252,7 @@
   --table-slot-ratio: 1;
   --table-card-render-width: 106%;
   --table-card-tilt: 42deg;
+  --table-name-gap: 14%;
   --table-name-width: 88%;
 }
 .view-table .player-seat[data-table-slot="3"] {
@@ -2259,6 +2262,7 @@
   --table-slot-ratio: 0.94;
   --table-card-render-width: 106%;
   --table-card-tilt: 39deg;
+  --table-name-gap: 13%;
   --table-name-width: 92%;
 }
 .view-table .player-seat[data-table-slot="4"] {
@@ -2268,6 +2272,7 @@
   --table-slot-ratio: 1;
   --table-card-render-width: 106%;
   --table-card-tilt: 42deg;
+  --table-name-gap: 14%;
   --table-name-width: 88%;
 }
 .view-table .player-seat[data-table-slot="5"] {
@@ -2277,6 +2282,7 @@
   --table-slot-ratio: 1.04;
   --table-card-render-width: 106%;
   --table-card-tilt: 45deg;
+  --table-name-gap: 13%;
   --table-name-width: 82%;
 }
 .view-table .player-seat::before {
@@ -2286,14 +2292,19 @@
   order: 1;
   width: var(--table-name-width, 84%);
   min-width: 0;
+  margin-top: var(--table-name-gap, 12%);
   border: 0;
   background: transparent;
-  padding: 0.14rem 0.22rem 0;
+  padding: 0;
   box-shadow: none;
   text-align: center;
   text-shadow:
-    0 1px 5px #000,
-    0 1px 2px #000;
+    0 1px 0 #160a02,
+    0 2px 4px #000,
+    0 0 7px #000;
+  transform: perspective(24rem) rotateX(var(--table-card-tilt, 0deg));
+  transform-origin: 50% 50%;
+  transform-style: preserve-3d;
 }
 .view-table .player-meta button {
   position: relative;
@@ -2304,12 +2315,15 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  padding-inline: 0.78rem;
-  color: #fff7e6;
-  font-family: var(--font-display);
-  font-size: clamp(0.56rem, 0.82vw, 0.72rem);
-  font-weight: 600;
+  padding-inline: 0.7rem;
+  color: #fff3d6;
+  font-family: var(--font-sans);
+  font-size: clamp(0.66rem, 0.9vw, 0.86rem);
+  font-weight: 700;
+  letter-spacing: 0.015em;
+  line-height: 1;
   text-align: center;
+  -webkit-font-smoothing: antialiased;
 }
 .player-meta button .player-name {
   display: block;
@@ -2733,6 +2747,7 @@
     --table-slot-ratio: 0.85;
     --table-card-render-width: 105%;
     --table-card-tilt: 29deg;
+    --table-name-gap: 9.5%;
     --table-name-width: 78%;
   }
   .view-table .player-seat[data-table-slot="1"] {
@@ -2742,6 +2757,7 @@
     --table-slot-ratio: 0.83;
     --table-card-render-width: 105%;
     --table-card-tilt: 27deg;
+    --table-name-gap: 12%;
     --table-name-width: 78%;
   }
   .view-table .player-seat[data-table-slot="2"] {
@@ -2751,6 +2767,7 @@
     --table-slot-ratio: 0.7;
     --table-card-render-width: 112%;
     --table-card-tilt: 5deg;
+    --table-name-gap: 14%;
     --table-name-width: 80%;
   }
   .view-table .player-seat[data-table-slot="3"] {
@@ -2760,6 +2777,7 @@
     --table-slot-ratio: 0.8;
     --table-card-render-width: 106%;
     --table-card-tilt: 23deg;
+    --table-name-gap: 17.5%;
     --table-name-width: 92%;
   }
   .view-table .player-seat[data-table-slot="4"] {
@@ -2769,6 +2787,7 @@
     --table-slot-ratio: 0.77;
     --table-card-render-width: 108%;
     --table-card-tilt: 20deg;
+    --table-name-gap: 14%;
     --table-name-width: 80%;
   }
   .view-table .player-seat[data-table-slot="5"] {
@@ -2778,14 +2797,12 @@
     --table-slot-ratio: 0.82;
     --table-card-render-width: 105%;
     --table-card-tilt: 26deg;
+    --table-name-gap: 12%;
     --table-name-width: 78%;
   }
-  .view-table .player-meta {
-    padding-top: 0.08rem;
-  }
   .view-table .player-meta button {
-    padding-inline: 0.62rem;
-    font-size: clamp(0.5rem, 2.3vw, 0.61rem);
+    padding-inline: 0.58rem;
+    font-size: clamp(0.58rem, 2.65vw, 0.7rem);
   }
   .view-table .player-meta > span {
     font-size: 0.46rem;
