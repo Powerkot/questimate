@@ -1975,6 +1975,25 @@
   overflow-wrap: anywhere;
   text-shadow: 0 2px 4px #000;
 }
+.task-copy-reveal {
+  --task-copy-lines: 1;
+  --task-copy-collapsed-height: 1.6rem;
+  --task-copy-expanded-height: 1.6rem;
+  position: relative;
+  overflow: hidden;
+  max-height: var(--task-copy-collapsed-height);
+  transition: max-height 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: max-height;
+}
+.task-copy-reveal.is-expanded {
+  max-height: var(--task-copy-expanded-height);
+}
+.task-copy-reveal.is-static {
+  overflow: visible;
+  max-height: none;
+  transition: none;
+  will-change: auto;
+}
 .task-copy.is-clamped {
   display: -webkit-box;
   overflow: hidden;
@@ -2669,6 +2688,11 @@
   .task-copy {
     font-size: 0.79rem;
     line-height: 1.28;
+  }
+  .task-copy-reveal {
+    --task-copy-lines: 2;
+    --task-copy-collapsed-height: 2.05rem;
+    --task-copy-expanded-height: 2.05rem;
   }
   .task-copy.is-clamped {
     -webkit-line-clamp: 2;
