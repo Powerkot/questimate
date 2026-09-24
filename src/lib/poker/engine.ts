@@ -2,6 +2,7 @@ import {
   SCALE,
   type CardValue,
   type ChatEntry,
+  type HistoryVote,
   type Snapshot,
   type StoredPlayer,
   type StoredRoom,
@@ -68,6 +69,8 @@ export function selectVariantId(
 export function normalizeRoom(room: StoredRoom): StoredRoom {
   room.roundId ||= room.task?.id ?? makeId("r");
   room.variants ||= {};
+  room.completedRounds ||= [];
+  if (room.task && !room.task.startedAt) room.task.startedAt = now();
   const backs = cardBackIds();
   if (!backs.includes(room.cardBackId)) {
     room.cardBackId = backs[stableHash(room.code) % backs.length] ?? DEFAULT_CARD_BACK_ID;
@@ -129,7 +132,10 @@ export function snapshot(room: StoredRoom, viewerId: string): Snapshot {
     ) as Record<CardValue, string>,
     votesCount: Object.keys(room.votes).length,
     scale: SCALE,
-    history: room.history,
+    // Snapshots must not expose the room's mutable array. The local demo applies
+    // actions in place, so reusing this reference can hide a newly finalized
+    // entry from React effects that watch history changes.
+    history: room.history.slice(),
     chat: room.chat.slice(-200),
   };
 }
@@ -151,6 +157,7 @@ export function createRoom(
     variants: {},
     revealed: false,
     history: [],
+    completedRounds: [],
     chat: [],
     snowUntil: {},
   };
@@ -204,7 +211,7 @@ export type RoomAction =
   | { type: "set-task"; playerId: string; token: string; title: string; description: string }
   | { type: "reveal"; playerId: string; token: string }
   | { type: "revote"; playerId: string; token: string }
-  | { type: "finalize"; playerId: string; token: string; result: string }
+  | { type: "finalize"; playerId: string; token: string; result: string; note?: string }
   | { type: "leave"; playerId: string; token: string };
 
 export type ApplyResult =
@@ -333,10 +340,11 @@ export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
     const title = action.title.trim().slice(0, 140);
     const description = action.description.trim().slice(0, 4000);
     if (!title) return { ok: false, error: "invalid" };
-    room.task = { id: makeId("t"), title, description };
+    room.task = { id: makeId("t"), title, description, startedAt: now() };
     room.votes = {};
     room.roundId = makeId("r");
     room.variants = {};
+    room.completedRounds = [];
     room.revealed = false;
     pushChat(room, {
       id: makeId("c"),
@@ -356,6 +364,11 @@ export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
 
   if (action.type === "revote") {
     if (!isHost || !room.task) return { ok: false, error: "unauthorized" };
+    const roundVotes = historyVotes(room);
+    if (roundVotes.length) {
+      room.completedRounds ??= [];
+      room.completedRounds.push({ id: room.roundId, votes: roundVotes, ts: now() });
+    }
     room.votes = {};
     room.roundId = makeId("r");
     room.variants = {};
@@ -374,18 +387,23 @@ export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
     if (!isHost || !room.task || !room.revealed || !isCard(action.result)) {
       return { ok: false, error: "unauthorized" };
     }
+    const finishedAt = now();
+    const finalVotes = historyVotes(room);
+    const rounds = [...(room.completedRounds ?? [])];
+    if (finalVotes.length) rounds.push({ id: room.roundId, votes: finalVotes, ts: finishedAt });
+    const decisionNote = action.note?.trim().slice(0, 600) || undefined;
     room.history.unshift({
       id: room.task.id,
       title: room.task.title,
       description: room.task.description,
       result: action.result,
       resultVariantId: selectVariantId(room, "consensus", action.result),
-      votes: Object.entries(room.votes).map(([id, value]) => ({
-        name: room.players.find((p) => p.id === id)?.name || "?",
-        value,
-        variantId: room.variants[id] ?? selectVariantId(room, id, value),
-      })),
-      ts: now(),
+      votes: finalVotes,
+      startedAt: room.task.startedAt,
+      finalizedBy: me.name,
+      decisionNote,
+      rounds,
+      ts: finishedAt,
     });
     if (room.history.length > 40) room.history = room.history.slice(0, 40);
     pushChat(room, {
@@ -399,9 +417,18 @@ export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
     room.votes = {};
     room.roundId = makeId("r");
     room.variants = {};
+    room.completedRounds = [];
     room.revealed = false;
     return { ok: true, room, you: me.id };
   }
 
   return { ok: false, error: "invalid" };
+}
+
+function historyVotes(room: StoredRoom): HistoryVote[] {
+  return Object.entries(room.votes).map(([id, value]) => ({
+    name: room.players.find((player) => player.id === id)?.name || "?",
+    value,
+    variantId: room.variants[id] ?? selectVariantId(room, id, value),
+  }));
 }

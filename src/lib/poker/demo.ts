@@ -92,6 +92,38 @@ export function buildDemoRoom(): StoredRoom {
       ts: ago(16 * 60_000),
     },
   ];
+  const decisionNotes = [
+    "Берём L: SSO-провайдер уже выбран, но нужно заложить ротацию refresh-токенов и отзыв сессий.",
+    "Останавливаемся на M — состояния ошибок известны, а API менять не потребуется.",
+    "S достаточно: используем существующего бота и добавляем треды по инцидентам.",
+  ];
+  const durations = [7, 6, 5];
+  for (const [index, item] of history.entries()) {
+    item.startedAt = item.ts - durations[index] * 60_000;
+    item.finalizedBy = "Ольга";
+    item.decisionNote = decisionNotes[index];
+    item.rounds = [
+      {
+        id: `demo-history-${index + 1}-final`,
+        votes: item.votes.map((vote) => ({ ...vote })),
+        ts: item.ts,
+      },
+    ];
+  }
+  history[0].rounds = [
+    {
+      id: "demo-history-1-first",
+      votes: [
+        { name: "Ольга", value: "m" },
+        { name: "Максим", value: "XXL" },
+        { name: "Анна", value: "xl" },
+        { name: "Илья", value: "l" },
+        { name: "Катя", value: "s" },
+      ],
+      ts: history[0].ts - 3 * 60_000,
+    },
+    ...(history[0].rounds ?? []),
+  ];
 
   const chat: ChatEntry[] = [
     {
@@ -262,12 +294,13 @@ export function buildDemoRoom(): StoredRoom {
     cardBackId: randomCardBackId(),
     hostId: "botolga",
     players,
-    task: { ...DEMO_TASK },
+    task: { ...DEMO_TASK, startedAt: ago(11 * 60_000) },
     votes,
     roundId,
     variants: {},
     revealed: false,
     history,
+    completedRounds: [],
     chat,
     snowUntil: {},
     demoHit: {},
@@ -286,7 +319,7 @@ export function prepareDemoJoin(room: StoredRoom, playerId: string): void {
   delete room.variants[playerId];
 
   if (!room.task) {
-    room.task = { ...DEMO_TASK };
+    room.task = { ...DEMO_TASK, startedAt: now() };
     room.roundId = makeId("r");
     room.votes = {};
     room.variants = {};

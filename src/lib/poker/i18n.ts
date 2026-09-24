@@ -31,6 +31,29 @@ type Dict = {
   saveResult: string;
   history: string;
   historyEmpty: string;
+  historyVotesCount: (count: number) => string;
+  historyAgreement: (percent: number) => string;
+  historyCompleted: string;
+  historyDescription: string;
+  historyDecision: string;
+  historyNoDescription: string;
+  historyDistribution: string;
+  historyIndividualVotes: string;
+  historyEdgeVotes: string;
+  historyMinimum: string;
+  historyMaximum: string;
+  historyFinalVsMajority: (result: string, majority: string) => string;
+  historyCopy: string;
+  historyCopied: string;
+  historyReestimate: string;
+  historyReestimateBlocked: string;
+  historyClose: string;
+  historyRoundsCount: (count: number) => string;
+  historyRound: (number: number) => string;
+  historyFinalizedBy: (name: string) => string;
+  decisionNote: string;
+  decisionNotePh: string;
+  decisionNoteHint: string;
   send: string;
   sayPh: string;
   host: string;
@@ -130,6 +153,51 @@ export const I18N: Record<Lang, Dict> = {
     saveResult: "Сохранить в историю",
     history: "История оценок",
     historyEmpty: "Пока пусто — итог появится после сохранения.",
+    historyVotesCount: (count) => {
+      const mod10 = count % 10;
+      const mod100 = count % 100;
+      const noun =
+        mod10 === 1 && mod100 !== 11
+          ? "голос"
+          : mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)
+            ? "голоса"
+            : "голосов";
+      return `${count} ${noun}`;
+    },
+    historyAgreement: (percent) => `Согласие ${percent}%`,
+    historyCompleted: "Завершено",
+    historyDescription: "Описание задачи",
+    historyDecision: "Почему выбрали эту оценку",
+    historyNoDescription: "Описание к этой задаче не добавляли.",
+    historyDistribution: "Распределение голосов",
+    historyIndividualVotes: "Голоса участников",
+    historyEdgeVotes: "Крайние оценки",
+    historyMinimum: "Минимальная",
+    historyMaximum: "Максимальная",
+    historyFinalVsMajority: (result, majority) =>
+      `Итог ${result} отличается от выбора большинства — ${majority}.`,
+    historyCopy: "Скопировать результат",
+    historyCopied: "Результат скопирован",
+    historyReestimate: "Оценить снова",
+    historyReestimateBlocked: "Сначала завершите текущую задачу",
+    historyClose: "Закрыть подробности",
+    historyRoundsCount: (count) => {
+      const mod10 = count % 10;
+      const mod100 = count % 100;
+      const noun =
+        mod10 === 1 && mod100 !== 11
+          ? "раунд"
+          : mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)
+            ? "раунда"
+            : "раундов";
+      return `${count} ${noun}`;
+    },
+    historyRound: (number) => `Раунд ${number}`,
+    historyFinalizedBy: (name) => `Итог сохранил(а) ${name}`,
+    decisionNote: "Комментарий к решению — необязательно",
+    decisionNotePh:
+      "Например: берём L, потому что интеграция уже готова, но нужен запас на миграцию.",
+    decisionNoteHint: "Он сохранится в истории и напомнит команде, почему выбрали этот итог.",
     send: "Сказать",
     sayPh: "Сказать группе…",
     host: "ведущий",
@@ -228,6 +296,31 @@ export const I18N: Record<Lang, Dict> = {
     saveResult: "Save to history",
     history: "Estimate history",
     historyEmpty: "Empty for now — a result appears after you save.",
+    historyVotesCount: (count) => `${count} ${count === 1 ? "vote" : "votes"}`,
+    historyAgreement: (percent) => `${percent}% agreement`,
+    historyCompleted: "Completed",
+    historyDescription: "Task description",
+    historyDecision: "Why this estimate was chosen",
+    historyNoDescription: "No description was added to this task.",
+    historyDistribution: "Vote distribution",
+    historyIndividualVotes: "Individual votes",
+    historyEdgeVotes: "Farthest estimates",
+    historyMinimum: "Minimum",
+    historyMaximum: "Maximum",
+    historyFinalVsMajority: (result, majority) =>
+      `The final estimate ${result} differs from the majority choice — ${majority}.`,
+    historyCopy: "Copy result",
+    historyCopied: "Result copied",
+    historyReestimate: "Estimate again",
+    historyReestimateBlocked: "Finish the current task first",
+    historyClose: "Close details",
+    historyRoundsCount: (count) => `${count} ${count === 1 ? "round" : "rounds"}`,
+    historyRound: (number) => `Round ${number}`,
+    historyFinalizedBy: (name) => `Finalized by ${name}`,
+    decisionNote: "Decision note — optional",
+    decisionNotePh:
+      "For example: choosing L because the integration exists, but the migration needs a buffer.",
+    decisionNoteHint: "It stays in history so the team remembers why this result was chosen.",
     send: "Say",
     sayPh: "Say to the party…",
     host: "host",
