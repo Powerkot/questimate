@@ -295,6 +295,60 @@ describe("poker engine", () => {
     assert.match(room.chat.at(-1)?.text ?? "", /оценена как M\./);
   });
 
+  it("returns a fresh history collection in every snapshot", () => {
+    const room = createRoom("ABCDE", stored("host01", "host-token", Date.now()));
+    const first = snapshot(room, "host01");
+    const second = snapshot(room, "host01");
+
+    assert.notEqual(first.history, room.history);
+    assert.notEqual(first.history, second.history);
+  });
+
+  it("keeps the decision note, duration and every revealed voting round in history", () => {
+    const originalNow = Date.now;
+    try {
+      let time = 10_000;
+      Date.now = () => time;
+      const room = createRoom("ABCDE", stored("host01", "host-token", time));
+      applyAction(room, {
+        type: "set-task",
+        playerId: "host01",
+        token: "host-token",
+        title: "Quest",
+        description: "Details",
+      });
+      applyAction(room, { type: "vote", playerId: "host01", token: "host-token", value: "s" });
+      applyAction(room, { type: "reveal", playerId: "host01", token: "host-token" });
+
+      time += 60_000;
+      applyAction(room, { type: "revote", playerId: "host01", token: "host-token" });
+      applyAction(room, { type: "vote", playerId: "host01", token: "host-token", value: "m" });
+      applyAction(room, { type: "reveal", playerId: "host01", token: "host-token" });
+
+      time += 120_000;
+      const finalized = applyAction(room, {
+        type: "finalize",
+        playerId: "host01",
+        token: "host-token",
+        result: "m",
+        note: "  We reduced the unknowns.  ",
+      });
+
+      assert.equal(finalized.ok, true);
+      assert.equal(room.history[0].startedAt, 10_000);
+      assert.equal(room.history[0].ts, 190_000);
+      assert.equal(room.history[0].finalizedBy, "host01");
+      assert.equal(room.history[0].decisionNote, "We reduced the unknowns.");
+      assert.deepEqual(
+        room.history[0].rounds?.map((round) => round.votes[0].value),
+        ["s", "m"],
+      );
+      assert.deepEqual(room.completedRounds, []);
+    } finally {
+      Date.now = originalNow;
+    }
+  });
+
   it("keeps one valid card back for the whole room", () => {
     const room = createRoom("ABCDE", stored("host01", "host-token", Date.now()));
     const initialBack = room.cardBackId;

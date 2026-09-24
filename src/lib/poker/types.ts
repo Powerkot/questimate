@@ -33,13 +33,29 @@ export type ChatEntry = {
   ts: number;
 };
 
+export type HistoryVote = {
+  name: string;
+  value: string;
+  variantId?: string;
+};
+
+export type HistoryRound = {
+  id: string;
+  votes: HistoryVote[];
+  ts: number;
+};
+
 export type HistoryEntry = {
   id: string;
   title: string;
   description: string;
   result: string;
   resultVariantId?: string;
-  votes: { name: string; value: string; variantId?: string }[];
+  votes: HistoryVote[];
+  startedAt?: number;
+  finalizedBy?: string;
+  decisionNote?: string;
+  rounds?: HistoryRound[];
   ts: number;
 };
 
@@ -47,6 +63,7 @@ export type Task = {
   id: string;
   title: string;
   description: string;
+  startedAt?: number;
 };
 
 export type StoredPlayer = {
@@ -77,6 +94,7 @@ export type StoredRoom = {
   variants: Record<string, string>;
   revealed: boolean;
   history: HistoryEntry[];
+  completedRounds?: HistoryRound[];
   chat: ChatEntry[];
   snowUntil: Record<string, number>;
   demoHit?: Record<string, boolean>;

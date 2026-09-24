@@ -19,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { HistoryPanel } from "@/components/poker/HistoryPanel";
 import { MagicCard, MiniFaces } from "@/components/poker/MagicCard";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
@@ -74,6 +75,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
   const [picked, setPicked] = useState<CardValue | null>(null);
   const [voteStatus, setVoteStatus] = useState<VoteStatus>("idle");
   const [resultPick, setResultPick] = useState<CardValue | null>(null);
+  const [decisionNote, setDecisionNote] = useState("");
   const [taskCollapsed, setTaskCollapsed] = useState(true);
   const [copied, setCopied] = useState(false);
   const [now, setNow] = useState(() => Date.now());
@@ -279,6 +281,10 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
     setPicked(null);
     setVoteStatus("idle");
   }, [state?.roundId]);
+
+  useEffect(() => {
+    setDecisionNote("");
+  }, [state?.task?.id]);
 
   useEffect(() => {
     const room = state?.code ?? null;
@@ -721,7 +727,9 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
               t={t}
               state={state}
               resultPick={resultPick}
+              decisionNote={decisionNote}
               onResultPick={setResultPick}
+              onDecisionNote={setDecisionNote}
               onReveal={() => {
                 const id = identity.current;
                 if (!id) return;
@@ -752,8 +760,10 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
                   playerId: id.playerId,
                   token: id.token,
                   result: resultPick,
+                  note: decisionNote.trim() || undefined,
                 });
                 setResultPick(null);
+                setDecisionNote("");
               }}
             />
           ) : null}
@@ -767,7 +777,23 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
             onTab={setSideTab}
             you={you}
             history={state.history}
+            isHost={isHost}
+            hasActiveTask={Boolean(state.task)}
             entries={state.chat}
+            onReestimate={(entry) => {
+              const id = identity.current;
+              if (!id || !isHost || state.task) return;
+              void act({
+                type: "set-task",
+                code: state.code,
+                playerId: id.playerId,
+                token: id.token,
+                title: entry.title,
+                description: entry.description,
+              });
+              setTaskCollapsed(true);
+              setMobilePane("table");
+            }}
             onSay={(text) => {
               const id = identity.current;
               if (!id) return;
@@ -1777,7 +1803,9 @@ function HostControls({
   t,
   state,
   resultPick,
+  decisionNote,
   onResultPick,
+  onDecisionNote,
   onReveal,
   onRevote,
   onFinalize,
@@ -1785,7 +1813,9 @@ function HostControls({
   t: (typeof I18N)[Lang];
   state: Snapshot;
   resultPick: CardValue | null;
+  decisionNote: string;
   onResultPick: (value: CardValue) => void;
+  onDecisionNote: (value: string) => void;
   onReveal: () => void;
   onRevote: () => void;
   onFinalize: () => void;
@@ -1825,6 +1855,17 @@ function HostControls({
               </button>
             ))}
           </div>
+          <label className="decision-note-field">
+            <span>{t.decisionNote}</span>
+            <Textarea
+              value={decisionNote}
+              maxLength={600}
+              rows={3}
+              placeholder={t.decisionNotePh}
+              onChange={(event) => onDecisionNote(event.target.value)}
+            />
+            <small>{t.decisionNoteHint}</small>
+          </label>
           <Button type="button" disabled={!resultPick} onClick={onFinalize}>
             {t.saveResult}
           </Button>
@@ -1841,7 +1882,10 @@ function SidePanel({
   onTab,
   you,
   history,
+  isHost,
+  hasActiveTask,
   entries,
+  onReestimate,
   onSay,
   onNick,
 }: {
@@ -1851,7 +1895,10 @@ function SidePanel({
   onTab: (tab: "history" | "chat") => void;
   you: string;
   history: Snapshot["history"];
+  isHost: boolean;
+  hasActiveTask: boolean;
   entries: Snapshot["chat"];
+  onReestimate: (entry: HistoryEntry) => void;
   onSay: (text: string) => void;
   onNick: (id: string, x: number, y: number) => void;
 }) {
@@ -1876,33 +1923,18 @@ function SidePanel({
         </button>
       </div>
       {tab === "history" ? (
-        <HistoryPanel t={t} history={history} />
+        <HistoryPanel
+          t={t}
+          lang={lang}
+          history={history}
+          isHost={isHost}
+          hasActiveTask={hasActiveTask}
+          onReestimate={onReestimate}
+        />
       ) : (
         <ChatPanel t={t} lang={lang} you={you} entries={entries} onSay={onSay} onNick={onNick} />
       )}
     </aside>
-  );
-}
-
-function HistoryPanel({ t, history }: { t: (typeof I18N)[Lang]; history: Snapshot["history"] }) {
-  return (
-    <div className="history-panel">
-      {!history.length ? (
-        <p className="empty-copy">{t.historyEmpty}</p>
-      ) : (
-        history.map((item) => (
-          <article key={item.id} className="history-item">
-            <div>
-              <strong>{item.title}</strong>
-              <span>{cardFaceLabel(item.result)}</span>
-            </div>
-            <p>
-              {item.votes.map((vote) => `${vote.name}: ${cardFaceLabel(vote.value)}`).join(" · ")}
-            </p>
-          </article>
-        ))
-      )}
-    </div>
   );
 }
 
