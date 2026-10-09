@@ -19,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { HandEmbers } from "@/components/poker/HandEmbers";
 import { RoundBar, VoteBars } from "@/components/poker/RoundBar";
 import { TaskJournal } from "@/components/poker/TaskJournal";
 import { FinalCardReveal } from "@/components/poker/FinalCardReveal";
@@ -1753,31 +1754,34 @@ function Deck({
   onPick: (value: CardValue) => void;
 }) {
   return (
-    <div className="deck-grid">
-      {scale.map((value, index) => (
-        <div
-          className="hand-slot"
-          key={value}
-          style={
-            {
-              "--hand-angle": `${(index - 3.5) * 4.6}deg`,
-              "--hand-lift": `${Math.pow(index - 3.5, 2) * 1.2}px`,
-            } as React.CSSProperties
-          }
-        >
-          <MagicCard
+    <div className="hand-stage">
+      <HandEmbers />
+      <div className="deck-grid">
+        {scale.map((value, index) => (
+          <div
+            className="hand-slot"
             key={value}
-            value={value}
-            variantId={variants[value]}
-            backId={backId}
-            face="front"
-            size="deck"
-            lang={lang}
-            selected={picked === value}
-            onClick={() => onPick(value)}
-          />
-        </div>
-      ))}
+            style={
+              {
+                "--hand-angle": `${(index - 3.5) * 4.6}deg`,
+                "--hand-lift": `${Math.pow(index - 3.5, 2) * 2.3}px`,
+              } as React.CSSProperties
+            }
+          >
+            <MagicCard
+              key={value}
+              value={value}
+              variantId={variants[value]}
+              backId={backId}
+              face="front"
+              size="deck"
+              lang={lang}
+              selected={picked === value}
+              onClick={() => onPick(value)}
+            />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

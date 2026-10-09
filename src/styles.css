@@ -4023,27 +4023,21 @@
 .hand-slot {
   width: clamp(43px, 8.8vw, 80px);
   margin: 0 -3px;
-  transform: translateY(var(--hand-lift)) rotate(var(--hand-angle));
-  transform-origin: 50% 120%;
-  transition: transform 0.24s cubic-bezier(0.22, 1.5, 0.36, 1);
+  transform: rotate(var(--hand-angle)) translateY(var(--hand-lift));
+  transform-origin: 50% 140%;
   position: relative;
 }
 .hand-slot:has(.is-selected) {
-  transform: translateY(calc(var(--hand-lift) - 18px)) rotate(var(--hand-angle)) scale(1.06);
-  z-index: 10;
+  z-index: 30;
 }
 .hand-slot:hover,
 .hand-slot:focus-within {
-  transform: translateY(calc(var(--hand-lift) - 24px)) rotate(0deg) scale(1.1);
-  z-index: 12;
+  z-index: 40;
 }
 .hand-slot .mc-deck {
   width: 100%;
   height: auto;
   aspect-ratio: 5/7;
-}
-.hand-slot .mc-btn:hover:not(:disabled) {
-  transform: none;
 }
 .hand-slot .mc-estimate .mc-symbol-front > span {
   font-size: clamp(17px, 3vw, 30px);
@@ -5814,5 +5808,91 @@
   }
   .estimate-selection {
     font-size: 12px;
+  }
+}
+
+/* 2.0.6 — the crown clears the orbit; the hand keeps its fan on hover. */
+.player-avatar .player-crown {
+  top: auto;
+  bottom: calc(100% + 8px);
+  width: 26px;
+  height: 26px;
+  color: #ffcf79;
+  fill: currentColor;
+  stroke-width: 1.2;
+  filter: drop-shadow(0 0 6px #ffca7499);
+}
+.player-you-badge {
+  top: -4px;
+  bottom: auto;
+  left: -9px;
+  transform: none;
+  border-radius: 4px;
+  background: #233b2d;
+}
+.hand-stage {
+  position: relative;
+  isolation: isolate;
+  max-width: 1000px;
+  margin-inline: auto;
+}
+.hand-embers {
+  position: absolute;
+  z-index: 0;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: calc(100% + 150px);
+  pointer-events: none;
+}
+.hand-dock .deck-grid {
+  position: relative;
+  z-index: 1;
+}
+.hand-dock .round-bar {
+  position: relative;
+  z-index: 2;
+}
+.hand-slot .mc-deck {
+  transform: translateY(0) scale(1);
+  transition:
+    transform 0.42s linear(0, 0.16 8%, 0.46 18%, 0.8 32%, 1.035 54%, 1.045 65%, 1.01 85%, 1),
+    filter 0.25s ease;
+}
+.hand-slot .mc-deck.is-selected {
+  transform: translateY(-20px) scale(1.04);
+  filter: drop-shadow(0 0 16px #ffca74b3);
+}
+.hand-slot .mc-deck:focus-visible {
+  transform: translateY(-26px) scale(1.1);
+  filter: brightness(1.1) drop-shadow(0 0 14px #ffca748c);
+}
+@media (hover: hover) and (pointer: fine) {
+  .hand-slot:hover .mc-deck:not(:disabled) {
+    transform: translateY(-26px) scale(1.1);
+    filter: brightness(1.1) drop-shadow(0 0 14px #ffca748c);
+  }
+  .hand-slot .mc-deck:active:not(:disabled) {
+    transform: translateY(-26px) scale(0.96);
+  }
+}
+@media (max-width: 759px) {
+  .player-avatar .player-crown {
+    top: auto;
+    width: 22px;
+    height: 22px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hand-embers {
+    display: none;
+  }
+  .hand-slot .mc-deck {
+    transition: none;
+  }
+  .hand-slot,
+  .hand-slot:hover,
+  .hand-slot:focus-within {
+    transform: rotate(var(--hand-angle)) translateY(var(--hand-lift));
   }
 }
