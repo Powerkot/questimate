@@ -19,7 +19,8 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { HistoryPanel } from "@/components/poker/HistoryPanel";
+import { TaskJournal } from "@/components/poker/TaskJournal";
+import { FinalCardReveal } from "@/components/poker/FinalCardReveal";
 import { MagicCard, MiniFaces } from "@/components/poker/MagicCard";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
@@ -144,7 +145,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
     (res: PokerResult, keepPicked = false, silent = false) => {
       if (!res.ok) {
         if (!silent) setError(res.error);
-        if (res.error === "room_not_found") {
+        if (res.error === "room_not_found" || res.error === "unauthorized") {
           clearLastRoom(codeRef.current ?? roomCode);
           setState(null);
           setYou(null);
@@ -305,7 +306,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
     if (latest && latestKey !== latestHistoryKey.current) {
       setFinalReveal(latest);
       if (finalRevealTimer.current) window.clearTimeout(finalRevealTimer.current);
-      finalRevealTimer.current = window.setTimeout(() => setFinalReveal(null), 7000);
+      finalRevealTimer.current = null;
     }
     latestHistoryKey.current = latestKey;
   }, [state?.code, state?.history]);
@@ -404,7 +405,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
     }
     if (showcasedRound.current === state.roundId) return;
     showcasedRound.current = state.roundId;
-    setVoteShowcaseOpen(true);
+    setVoteShowcaseOpen(false);
   }, [analysis, state?.revealed, state?.roundId]);
 
   if (restoring) {
@@ -470,6 +471,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
         `lang-${lang}`,
         presentation && "is-presenting",
         !presentation && `mobile-pane-${mobilePane}`,
+        state.task && !state.revealed && !presentation && "has-hand",
       )}
     >
       <header className="quest-header">
@@ -632,16 +634,9 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
             <div className="table-scene">
               {visualMode === "table" ? (
                 <>
-                  <picture className="table-scene-art" aria-hidden="true">
-                    <source media="(max-width: 759px)" srcSet="/room/table-oval-mobile-720.webp" />
-                    <img
-                      src="/room/table-oval-desktop-1536.webp"
-                      width="1536"
-                      height="1024"
-                      alt=""
-                      decoding="async"
-                    />
-                  </picture>
+                  <div className="oval-table" aria-hidden="true">
+                    <span>Q</span>
+                  </div>
                   <div className="table-scene-shade" aria-hidden="true" />
                 </>
               ) : null}
@@ -679,50 +674,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
             />
           ) : null}
 
-          {state.task && !state.revealed && !presentation ? (
-            <section className="deck-panel" aria-labelledby="deck-title">
-              <div className="section-heading deck-heading">
-                <div>
-                  <span className="eyebrow">
-                    <Sparkles /> {t.chooseCard}
-                  </span>
-                  <h2 id="deck-title">{t.chooseCardHint}</h2>
-                </div>
-                <VoteState status={voteStatus} t={t} />
-              </div>
-              <Deck
-                scale={state.scale}
-                picked={picked ?? me?.vote ?? null}
-                lang={lang}
-                variants={state.deckVariants}
-                backId={state.cardBackId}
-                onPick={async (value) => {
-                  const id = identity.current;
-                  if (!id) return;
-                  const previous = picked ?? me?.vote ?? null;
-                  setPicked(value);
-                  setVoteStatus("saving");
-                  const ok = await act(
-                    {
-                      type: "vote",
-                      code: state.code,
-                      playerId: id.playerId,
-                      token: id.token,
-                      value,
-                    },
-                    { keepPicked: true },
-                  );
-                  if (ok) setVoteStatus("saved");
-                  else {
-                    setPicked(previous);
-                    setVoteStatus("failed");
-                  }
-                }}
-              />
-            </section>
-          ) : null}
-
-          {isHost && state.task && !presentation ? (
+          {isHost && state.task && state.revealed && !presentation ? (
             <HostControls
               t={t}
               state={state}
@@ -777,8 +729,26 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
             onTab={setSideTab}
             you={you}
             history={state.history}
+            queue={state.queue ?? []}
+            current={state.task}
+            onQueueAdd={async (title, description) => {
+              const id = identity.current;
+              return id
+                ? act({ type: "queue-task", code: state.code, ...id, title, description })
+                : false;
+            }}
+            onQueueStart={(taskId) => {
+              const id = identity.current;
+              if (id) {
+                void act({ type: "start-queued", code: state.code, ...id, taskId });
+                setMobilePane("table");
+              }
+            }}
+            onQueueRemove={(taskId) => {
+              const id = identity.current;
+              if (id) void act({ type: "remove-queued", code: state.code, ...id, taskId });
+            }}
             isHost={isHost}
-            hasActiveTask={Boolean(state.task)}
             entries={state.chat}
             onReestimate={(entry) => {
               const id = identity.current;
@@ -845,9 +815,64 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
             }}
           >
             <ScrollText aria-hidden="true" />
-            <span>{lang === "ru" ? "История" : "History"}</span>
+            <span>{lang === "ru" ? "Журнал" : "Quests"}</span>
           </button>
         </nav>
+      ) : null}
+
+      {state.task && !state.revealed && !presentation ? (
+        <section className="deck-panel hand-dock" aria-labelledby="deck-title">
+          <div className="section-heading deck-heading">
+            <div>
+              <span className="eyebrow">
+                <Sparkles /> {t.chooseCard}
+              </span>
+              <h2 id="deck-title">{t.chooseCardHint}</h2>
+            </div>
+            <VoteState status={voteStatus} t={t} />
+            {isHost && (
+              <Button
+                type="button"
+                className="dock-reveal"
+                onClick={() => {
+                  const id = identity.current;
+                  if (id) void act({ type: "reveal", code: state.code, ...id });
+                }}
+              >
+                {t.reveal}
+              </Button>
+            )}
+          </div>
+          <Deck
+            scale={state.scale}
+            picked={picked ?? me?.vote ?? null}
+            lang={lang}
+            variants={state.deckVariants}
+            backId={state.cardBackId}
+            onPick={async (value) => {
+              const id = identity.current;
+              if (!id) return;
+              const previous = picked ?? me?.vote ?? null;
+              setPicked(value);
+              setVoteStatus("saving");
+              const ok = await act(
+                {
+                  type: "vote",
+                  code: state.code,
+                  playerId: id.playerId,
+                  token: id.token,
+                  value,
+                },
+                { keepPicked: true },
+              );
+              if (ok) setVoteStatus("saved");
+              else {
+                setPicked(previous);
+                setVoteStatus("failed");
+              }
+            }}
+          />
+        </section>
       ) : null}
 
       <div className="sr-only" aria-live="polite">
@@ -865,10 +890,9 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
       ) : null}
 
       {finalReveal ? (
-        <ConsensusReveal
+        <FinalCardReveal
           entry={finalReveal}
           lang={lang}
-          t={t}
           onClose={() => {
             if (finalRevealTimer.current) window.clearTimeout(finalRevealTimer.current);
             finalRevealTimer.current = null;
@@ -882,6 +906,27 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
           x={menu.x}
           y={menu.y}
           label={t.snow}
+          lang={lang}
+          isHost={isHost && menu.targetId !== you}
+          onTransfer={() => {
+            const id = identity.current;
+            if (id)
+              void act({ type: "transfer-host", code: state.code, ...id, targetId: menu.targetId });
+            setMenu(null);
+          }}
+          onKick={() => {
+            const id = identity.current;
+            if (
+              id &&
+              window.confirm(
+                lang === "ru"
+                  ? "Убрать этого игрока из комнаты?"
+                  : "Remove this player from the room?",
+              )
+            )
+              void act({ type: "kick", code: state.code, ...id, targetId: menu.targetId });
+            setMenu(null);
+          }}
           onSnow={() => {
             const id = identity.current;
             if (!id) return;
@@ -1048,63 +1093,6 @@ function ShowcaseCard({
   );
 }
 
-function ConsensusReveal({
-  entry,
-  lang,
-  t,
-  onClose,
-}: {
-  entry: HistoryEntry;
-  lang: Lang;
-  t: (typeof I18N)[Lang];
-  onClose: () => void;
-}) {
-  useEffect(() => {
-    const handleKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [onClose]);
-
-  return (
-    <div
-      className="consensus-reveal"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="result-title"
-    >
-      <button
-        type="button"
-        className="consensus-reveal-close"
-        onClick={onClose}
-        aria-label={lang === "ru" ? "Закрыть" : "Close"}
-        autoFocus
-      >
-        <X aria-hidden="true" />
-      </button>
-      <div className="consensus-reveal-glow" aria-hidden="true" />
-      <div className="consensus-reveal-card">
-        <MagicCard
-          value={entry.result}
-          variantId={entry.resultVariantId}
-          face="front"
-          size="hero"
-          artwork="character"
-          lang={lang}
-          eager
-        />
-      </div>
-      <div className="consensus-reveal-copy">
-        <span className="eyebrow">{t.questComplete}</span>
-        <h2 id="result-title">{entry.title}</h2>
-        <p>{t.partyDecision}</p>
-        <strong>{cardFaceLabel(entry.result)}</strong>
-      </div>
-    </div>
-  );
-}
-
 function errorText(error: string, t: (typeof I18N)[Lang]): string {
   if (error === "name_required") return t.nameRequired;
   if (error === "invalid_code") return t.invalidRoom;
@@ -1224,6 +1212,25 @@ function Lobby({
               ? "Все выбирают карту. Оценки открываются одновременно. Договориться становится проще."
               : "Everyone picks a card. Estimates are revealed together. Reaching agreement gets easier."}
           </p>
+          <div
+            className="lobby-card-fan"
+            aria-label={isRu ? "Оценки от XS до XXL" : "Estimates from XS to XXL"}
+          >
+            {(["xs", "s", "m", "l", "xl", "XXL"] as CardValue[]).map((v, i) => (
+              <div
+                key={v}
+                style={
+                  {
+                    "--fan-angle": `${(i - 2.5) * 9}deg`,
+                    "--fan-x": `${(i - 2.5) * 47}px`,
+                    "--fan-y": `${Math.abs(i - 2.5) * 7}px`,
+                  } as React.CSSProperties
+                }
+              >
+                <MagicCard value={v} face="front" size="deck" lang={lang} />
+              </div>
+            ))}
+          </div>
           <div className="lobby-actions">
             <Button type="button" onClick={() => openPanel("create")}>
               {t.create}
@@ -1622,6 +1629,16 @@ function Seat({
       )}
       data-table-slot={slot}
     >
+      <div
+        className={cn(
+          "player-avatar",
+          task && !revealed && player.online && !player.voted && "is-thinking",
+          player.voted && "has-voted",
+        )}
+        aria-hidden="true"
+      >
+        {player.name.slice(0, 1).toUpperCase()}
+      </div>
       <div className="player-meta" title={displayName}>
         <button
           type="button"
@@ -1637,7 +1654,7 @@ function Seat({
         </button>
         <span>{!player.online ? t.away : player.voted ? t.voted : t.waiting}</span>
       </div>
-      <div className="table-card-stage">
+      <div className={cn("table-card-stage", player.voted && "has-card")}>
         <MagicCard
           value={player.vote}
           variantId={player.variantId}
@@ -1669,18 +1686,29 @@ function Deck({
 }) {
   return (
     <div className="deck-grid">
-      {scale.map((value) => (
-        <MagicCard
+      {scale.map((value, index) => (
+        <div
+          className="hand-slot"
           key={value}
-          value={value}
-          variantId={variants[value]}
-          backId={backId}
-          face="front"
-          size="deck"
-          lang={lang}
-          selected={picked === value}
-          onClick={() => onPick(value)}
-        />
+          style={
+            {
+              "--hand-angle": `${(index - 3.5) * 4.6}deg`,
+              "--hand-lift": `${Math.pow(index - 3.5, 2) * 1.2}px`,
+            } as React.CSSProperties
+          }
+        >
+          <MagicCard
+            key={value}
+            value={value}
+            variantId={variants[value]}
+            backId={backId}
+            face="front"
+            size="deck"
+            lang={lang}
+            selected={picked === value}
+            onClick={() => onPick(value)}
+          />
+        </div>
       ))}
     </div>
   );
@@ -1751,6 +1779,32 @@ function ConsensusPanel({
           <p>{insight}</p>
         </div>
       </div>
+      <div
+        className="vote-histogram"
+        aria-label={lang === "ru" ? "Распределение голосов" : "Vote distribution"}
+      >
+        {state.scale.slice(0, 6).map((value) => {
+          const count = state.players.filter((p) => p.vote === value).length;
+          const max = Math.max(
+            1,
+            ...state.scale.slice(0, 6).map((v) => state.players.filter((p) => p.vote === v).length),
+          );
+          return (
+            <div key={value} className={cn(analysis.mode === value && "is-mode")}>
+              <b>{count}</b>
+              <div>
+                <i style={{ height: `${(count / max) * 100}%` }} />
+              </div>
+              <span>{cardFaceLabel(value)}</span>
+            </div>
+          );
+        })}
+      </div>
+      {analysis.level === "low" && (
+        <p className="debate-label">
+          {lang === "ru" ? "Будет жаркий спор" : "Spirited debate ahead"}
+        </p>
+      )}
       <MiniFaces values={cardValues} lang={lang} />
       <dl className="consensus-stats">
         <div>
@@ -1882,8 +1936,12 @@ function SidePanel({
   onTab,
   you,
   history,
+  queue,
+  current,
+  onQueueAdd,
+  onQueueStart,
+  onQueueRemove,
   isHost,
-  hasActiveTask,
   entries,
   onReestimate,
   onSay,
@@ -1895,8 +1953,12 @@ function SidePanel({
   onTab: (tab: "history" | "chat") => void;
   you: string;
   history: Snapshot["history"];
+  queue: Snapshot["queue"];
+  current: Snapshot["task"];
+  onQueueAdd: (title: string, description: string) => Promise<boolean>;
+  onQueueStart: (id: string) => void;
+  onQueueRemove: (id: string) => void;
   isHost: boolean;
-  hasActiveTask: boolean;
   entries: Snapshot["chat"];
   onReestimate: (entry: HistoryEntry) => void;
   onSay: (text: string) => void;
@@ -1919,16 +1981,19 @@ function SidePanel({
           aria-selected={tab === "history"}
           onClick={() => onTab("history")}
         >
-          <ScrollText /> {t.history}
+          <ScrollText /> {lang === "ru" ? "Журнал заданий" : "Quest log"}
         </button>
       </div>
       {tab === "history" ? (
-        <HistoryPanel
-          t={t}
+        <TaskJournal
           lang={lang}
           history={history}
+          queue={queue}
+          current={current}
           isHost={isHost}
-          hasActiveTask={hasActiveTask}
+          onAdd={onQueueAdd}
+          onStart={onQueueStart}
+          onRemove={onQueueRemove}
           onReestimate={onReestimate}
         />
       ) : (
@@ -2012,12 +2077,20 @@ function ContextMenu({
   x,
   y,
   label,
+  lang,
+  isHost,
+  onTransfer,
+  onKick,
   onSnow,
   onClose,
 }: {
   x: number;
   y: number;
   label: string;
+  lang: Lang;
+  isHost: boolean;
+  onTransfer: () => void;
+  onKick: () => void;
   onSnow: () => void;
   onClose: () => void;
 }) {
@@ -2025,7 +2098,7 @@ function ContextMenu({
   useEffect(() => {
     setPosition({
       left: Math.min(x, window.innerWidth - 210),
-      top: Math.min(y, window.innerHeight - 84),
+      top: Math.max(10, Math.min(y, window.innerHeight - 190)),
     });
     const timer = window.setTimeout(() => window.addEventListener("click", onClose), 0);
     return () => {
@@ -2038,6 +2111,16 @@ function ContextMenu({
       <button type="button" onClick={onSnow}>
         ☃ {label}
       </button>
+      {isHost && (
+        <>
+          <button type="button" onClick={onTransfer}>
+            ♛ {lang === "ru" ? "Сделать ведущим" : "Make host"}
+          </button>
+          <button type="button" onClick={onKick}>
+            × {lang === "ru" ? "Убрать из комнаты" : "Remove player"}
+          </button>
+        </>
+      )}
     </div>
   );
 }

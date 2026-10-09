@@ -1,4 +1,4 @@
-import { cardBackArt, cardFaceLabel, cardLore, estimateCardArt } from "@/lib/poker/cards";
+import { cardBackArt, cardFaceLabel, cardLore } from "@/lib/poker/cards";
 import type { Lang } from "@/lib/poker/i18n";
 import type { CardValue } from "@/lib/poker/types";
 import { cn } from "@/lib/cn";
@@ -38,7 +38,29 @@ export function MagicCard({
 }: Props) {
   const lore = cardLore(value, variantId);
   const valueLabel = cardFaceLabel(value);
-  const art = artwork === "character" ? lore?.art : estimateCardArt(value);
+  const art = artwork === "character" ? lore?.art : null;
+  const sizeNames: Record<string, string> =
+    lang === "ru"
+      ? {
+          xs: "Очень маленькая",
+          s: "Маленькая",
+          m: "Средняя",
+          l: "Большая",
+          xl: "Очень большая",
+          XXL: "Гигантская",
+          "?": "Есть вопросы",
+          "☕": "Перерыв",
+        }
+      : {
+          xs: "Extra small",
+          s: "Small",
+          m: "Medium",
+          l: "Large",
+          xl: "Extra large",
+          XXL: "Huge",
+          "?": "Unsure",
+          "☕": "Break",
+        };
   const label =
     artwork === "character" && lore
       ? `${valueLabel} — ${lore.name[lang]}, ${lore.title[lang]}`
@@ -80,6 +102,7 @@ export function MagicCard({
         ) : value ? (
           <span className="mc-symbol-front" aria-hidden="true">
             <span>{valueLabel}</span>
+            <small>{sizeNames[value ?? ""]}</small>
           </span>
         ) : (
           <span className="mc-blank">—</span>

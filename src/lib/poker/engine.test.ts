@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { cardBackIds, cardVariantIds, estimateCardArt } from "./cards.ts";
-import { applyDemoAction, buildDemoRoom, prepareDemoJoin } from "./demo.ts";
+import { applyDemoAction, buildDemoRoom, prepareDemoJoin, tickDemoRoom } from "./demo.ts";
 import {
   DEMO_CODE,
   applyAction,
@@ -30,7 +30,7 @@ describe("poker engine", () => {
     assert.equal(room.hostId, "guest01");
     assert.equal(room.votes.guest01, undefined);
     assert.equal(room.task?.id, "t-demo-now");
-    assert.equal(room.votes.botolga, "s");
+    assert.equal(room.votes.botolga, undefined);
   });
 
   it("starts every demo visitor in an isolated pristine sandbox", () => {
@@ -386,4 +386,92 @@ describe("poker engine", () => {
     const second = normalizeRoom(room).cardBackId;
     assert.equal(first, second);
   });
+});
+
+describe("Questimate 2.0 task journal and host actions", () => {
+  const auth = { playerId: "host001", token: "host-token-001" };
+  function setup() {
+    const room = createRoom("TEST2", stored(auth.playerId, auth.token, Date.now()));
+    applyAction(room, {
+      type: "join",
+      playerId: "guest01",
+      token: "guest-token-01",
+      name: "Guest",
+    });
+    return room;
+  }
+  it("keeps queued quests out of voting until started, then archives only a confirmed result", () => {
+    const room = setup();
+    assert.equal(
+      applyAction(room, {
+        type: "queue-task",
+        ...auth,
+        title: "Next quest",
+        description: "Details",
+      }).ok,
+      true,
+    );
+    const taskId = room.queue![0].id;
+    assert.equal(room.task, null);
+    assert.equal(snapshot(room, auth.playerId).queue.length, 1);
+    assert.equal(applyAction(room, { type: "start-queued", ...auth, taskId }).ok, true);
+    assert.equal(snapshot(room, auth.playerId).task?.id, taskId);
+    assert.equal(room.queue!.length, 0);
+    applyAction(room, { type: "vote", ...auth, value: "m" });
+    applyAction(room, { type: "reveal", ...auth });
+    assert.equal(room.history.length, 0);
+    applyAction(room, { type: "finalize", ...auth, result: "m" });
+    assert.equal(room.history[0].id, taskId);
+    assert.equal(room.task, null);
+  });
+  it("rejects guest queue and host actions, and cannot replace an active task", () => {
+    const room = setup();
+    const guest = { playerId: "guest01", token: "guest-token-01" };
+    for (const action of [
+      { type: "queue-task" as const, ...guest, title: "No", description: "" },
+      { type: "transfer-host" as const, ...guest, targetId: auth.playerId },
+      { type: "kick" as const, ...guest, targetId: auth.playerId },
+    ])
+      assert.equal(applyAction(room, action).ok, false);
+    applyAction(room, { type: "set-task", ...auth, title: "Active", description: "" });
+    const taskId = room.task?.id;
+    assert.equal(
+      applyAction(room, { type: "set-task", ...auth, title: "Replacement", description: "" }).ok,
+      false,
+    );
+    applyAction(room, { type: "queue-task", ...auth, title: "Queued", description: "" });
+    assert.equal(
+      applyAction(room, { type: "start-queued", ...auth, taskId: room.queue![0].id }).ok,
+      false,
+    );
+    assert.equal(snapshot(room, auth.playerId).task?.id, taskId);
+    assert.equal(room.queue!.length, 1);
+  });
+  it("transfers authority immediately and rejects a removed member's resume and rejoin", () => {
+    const room = setup();
+    assert.equal(
+      applyAction(room, { type: "transfer-host", ...auth, targetId: "guest01" }).ok,
+      true,
+    );
+    assert.equal(applyAction(room, { type: "kick", ...auth, targetId: "guest01" }).ok, false);
+    const newHost = { playerId: "guest01", token: "guest-token-01" };
+    assert.equal(applyAction(room, { type: "kick", ...newHost, targetId: auth.playerId }).ok, true);
+    assert.equal(snapshot(room, newHost.playerId).players.length, 1);
+    assert.equal(applyAction(room, { type: "resume", ...auth }).ok, false);
+    assert.equal(applyAction(room, { type: "join", ...auth, name: "Back" }).ok, false);
+  });
+});
+
+it("deals demo votes gradually and never fills votes after a reveal", () => {
+  const room = buildDemoRoom();
+  room.players.push(stored("guest01", "guest-token-01", Date.now()));
+  prepareDemoJoin(room, "guest01");
+  assert.equal(Object.keys(room.votes).length, 0);
+  room.demoVotingAt = Date.now() - 3000;
+  tickDemoRoom(room);
+  assert.equal(Object.keys(room.votes).length, 2);
+  room.revealed = true;
+  room.demoVotingAt = Date.now() - 20000;
+  tickDemoRoom(room);
+  assert.equal(Object.keys(room.votes).length, 2);
 });
