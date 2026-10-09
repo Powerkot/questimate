@@ -672,6 +672,8 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
 
           {state.task && state.revealed && !presentation ? (
             <HostControls
+              analysis={analysis}
+              onShowcase={() => setVoteShowcaseOpen(true)}
               lang={lang}
               canManage={isHost}
               t={t}
@@ -717,7 +719,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
               }}
             />
           ) : null}
-          {analysis ? (
+          {analysis && presentation ? (
             <ConsensusPanel
               t={t}
               lang={lang}
@@ -1802,12 +1804,18 @@ function ConsensusPanel({
   state,
   analysis,
   onShowcase,
+  selected,
+  onPick,
+  embedded = false,
 }: {
   t: (typeof I18N)[Lang];
   lang: Lang;
   state: Snapshot;
   analysis: NonNullable<ReturnType<typeof analyzeVotes>>;
   onShowcase: () => void;
+  selected?: CardValue | null;
+  onPick?: (value: CardValue) => void;
+  embedded?: boolean;
 }) {
   const levelLabel =
     analysis.level === "high"
@@ -1831,7 +1839,7 @@ function ConsensusPanel({
     );
 
   return (
-    <section className="consensus-card">
+    <section className={cn("consensus-card", embedded && "is-embedded")}>
       <div className="distribution-heading">
         <div>
           <span className="eyebrow">{t.mode}</span>
@@ -1843,7 +1851,22 @@ function ConsensusPanel({
           <small>{levelLabel}</small>
         </div>
       </div>
-      <VoteBars players={state.players} scale={state.scale.slice(0, 6)} lang={lang} />
+      <VoteBars
+        players={state.players}
+        scale={state.scale}
+        lang={lang}
+        selected={selected}
+        onPick={onPick}
+      />
+      {onPick && (
+        <p className="estimate-selection" aria-live="polite">
+          {selected
+            ? `${lang === "ru" ? "Итоговая оценка" : "Final estimate"}: ${cardFaceLabel(selected)}`
+            : lang === "ru"
+              ? "Нажмите на столбец, чтобы выбрать итоговую оценку"
+              : "Select a bar to choose the final estimate"}
+        </p>
+      )}
       {analysis.level === "low" && (
         <p className="debate-label">
           {lang === "ru" ? "Будет жаркий спор" : "Spirited debate ahead"}
@@ -1907,6 +1930,8 @@ function ConsensusPanel({
 
 function HostControls({
   t,
+  analysis,
+  onShowcase,
   lang,
   canManage,
   state,
@@ -1919,6 +1944,8 @@ function HostControls({
   onFinalize,
 }: {
   t: (typeof I18N)[Lang];
+  analysis: ReturnType<typeof analyzeVotes>;
+  onShowcase: () => void;
   lang: Lang;
   canManage: boolean;
   state: Snapshot;
@@ -1941,26 +1968,40 @@ function HostControls({
         onReveal={onReveal}
         onReset={onRevote}
         onFinalize={onFinalize}
-      />
-      {canManage && (
-        <details className="round-decision-note">
-          <summary>
-            {t.decisionNote}
-            {decisionNote.trim() ? " ✓" : ""}
-          </summary>
-          <label className="decision-note-field">
-            <span className="sr-only">{t.decisionNote}</span>
-            <Textarea
-              value={decisionNote}
-              maxLength={600}
-              rows={2}
-              placeholder={t.decisionNotePh}
-              onChange={(event) => onDecisionNote(event.target.value)}
-            />
-            <small>{t.decisionNoteHint}</small>
-          </label>
-        </details>
-      )}
+        showDistribution={!analysis}
+      >
+        {analysis && (
+          <ConsensusPanel
+            t={t}
+            lang={lang}
+            state={state}
+            analysis={analysis}
+            selected={resultPick}
+            onPick={canManage ? onResultPick : undefined}
+            onShowcase={onShowcase}
+            embedded
+          />
+        )}
+        {canManage && (
+          <details className="round-decision-note">
+            <summary>
+              {t.decisionNote}
+              {decisionNote.trim() ? " ✓" : ""}
+            </summary>
+            <label className="decision-note-field">
+              <span className="sr-only">{t.decisionNote}</span>
+              <Textarea
+                value={decisionNote}
+                maxLength={600}
+                rows={2}
+                placeholder={t.decisionNotePh}
+                onChange={(event) => onDecisionNote(event.target.value)}
+              />
+              <small>{t.decisionNoteHint}</small>
+            </label>
+          </details>
+        )}
+      </RoundBar>
     </div>
   );
 }

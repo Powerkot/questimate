@@ -5194,7 +5194,7 @@
 .round-decision-note .decision-note-field {
   margin: 8px;
 }
-.round-bar .estimate-bars {
+.round-bar > .estimate-bars {
   flex: 1 1 100%;
   order: 2;
 }
@@ -5757,5 +5757,62 @@
 @media (max-width: 759px) {
   .quest-app.has-hand {
     padding-bottom: 320px;
+  }
+}
+
+/* 2.0.5 — one distribution for understanding the votes and choosing a result. */
+.round-analysis {
+  flex: 1 1 100%;
+  min-width: 0;
+  order: 2;
+  padding-top: 16px;
+  border-top: 1px solid #c5964933;
+}
+.consensus-card.is-embedded {
+  gap: 4px;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: none;
+  box-shadow: none;
+}
+.round-analysis .estimate-bars {
+  margin-top: 12px;
+  padding: 12px 8px;
+}
+.round-analysis .estimate-track,
+.round-analysis .estimate-bars.is-picker .estimate-track {
+  height: 80px;
+  width: min(100%, 46px);
+}
+.estimate-selection {
+  margin: 8px 0;
+  color: #f2d49a;
+  text-align: center;
+  font: 14px/1.4 var(--font-display);
+}
+.round-analysis .round-decision-note {
+  margin: 12px 0 0;
+  border-top: 1px solid #c5964922;
+}
+@media (max-width: 759px) {
+  .round-analysis {
+    padding-top: 12px;
+  }
+  .round-analysis .estimate-bars {
+    padding: 8px 2px;
+    gap: 2px;
+  }
+  .round-analysis .estimate-track,
+  .round-analysis .estimate-bars.is-picker .estimate-track {
+    height: 60px;
+    width: min(100%, 28px);
+  }
+  .round-analysis .estimate-bars > button,
+  .round-analysis .estimate-bars > div {
+    padding: 4px 1px;
+  }
+  .estimate-selection {
+    font-size: 12px;
   }
 }
