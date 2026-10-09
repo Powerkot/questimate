@@ -5896,3 +5896,27 @@
     transform: rotate(var(--hand-angle)) translateY(var(--hand-lift));
   }
 }
+
+/* 2.0.7 — keep each vote and its voters together. */
+.estimate-bars {
+  align-items: stretch;
+}
+.estimate-voters {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  color: #cbb997;
+  font: 12px/1.5 var(--font-sans);
+  overflow-wrap: anywhere;
+}
+@media (max-width: 759px) {
+  .estimate-bars,
+  .estimate-bars.is-picker {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    row-gap: 12px;
+  }
+  .estimate-voters {
+    font-size: 11px;
+  }
+}
