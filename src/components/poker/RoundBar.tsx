@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Check, Eye, RotateCcw, Swords } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cardFaceLabel } from "@/lib/poker/cards";
@@ -67,6 +68,8 @@ export function RoundBar({
   onReveal,
   onReset,
   onFinalize,
+  showDistribution = true,
+  children,
 }: {
   state: Snapshot;
   lang: Lang;
@@ -76,6 +79,8 @@ export function RoundBar({
   onReveal?: () => void;
   onReset: () => void;
   onFinalize?: () => void;
+  showDistribution?: boolean;
+  children?: ReactNode;
 }) {
   const ru = lang === "ru";
   const count = state.players.filter((p) => p.voted).length;
@@ -113,7 +118,7 @@ export function RoundBar({
           </p>
         </div>
       </div>
-      {state.revealed && canManage && onPick && (
+      {state.revealed && showDistribution && canManage && onPick && (
         <VoteBars
           players={state.players}
           scale={state.scale}
@@ -166,6 +171,7 @@ export function RoundBar({
           )}
         </div>
       )}
+      {children && <div className="round-analysis">{children}</div>}
     </section>
   );
 }
