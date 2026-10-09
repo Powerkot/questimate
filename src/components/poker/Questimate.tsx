@@ -19,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { RoundBar, VoteBars } from "@/components/poker/RoundBar";
 import { TaskJournal } from "@/components/poker/TaskJournal";
 import { FinalCardReveal } from "@/components/poker/FinalCardReveal";
 import { MagicCard, MiniFaces } from "@/components/poker/MagicCard";
@@ -636,6 +637,11 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
                 <>
                   <div className="oval-table" aria-hidden="true">
                     <span>Q</span>
+                    {state.revealed && state.task && (
+                      <div key={state.task.id} className="table-comet">
+                        <i />
+                      </div>
+                    )}
                   </div>
                   <div className="table-scene-shade" aria-hidden="true" />
                 </>
@@ -664,18 +670,10 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
             </div>
           </section>
 
-          {analysis ? (
-            <ConsensusPanel
-              t={t}
-              lang={lang}
-              state={state}
-              analysis={analysis}
-              onShowcase={() => setVoteShowcaseOpen(true)}
-            />
-          ) : null}
-
-          {isHost && state.task && state.revealed && !presentation ? (
+          {state.task && state.revealed && !presentation ? (
             <HostControls
+              lang={lang}
+              canManage={isHost}
               t={t}
               state={state}
               resultPick={resultPick}
@@ -717,6 +715,15 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
                 setResultPick(null);
                 setDecisionNote("");
               }}
+            />
+          ) : null}
+          {analysis ? (
+            <ConsensusPanel
+              t={t}
+              lang={lang}
+              state={state}
+              analysis={analysis}
+              onShowcase={() => setVoteShowcaseOpen(true)}
             />
           ) : null}
         </div>
@@ -822,27 +829,26 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
 
       {state.task && !state.revealed && !presentation ? (
         <section className="deck-panel hand-dock" aria-labelledby="deck-title">
-          <div className="section-heading deck-heading">
-            <div>
-              <span className="eyebrow">
-                <Sparkles /> {t.chooseCard}
-              </span>
-              <h2 id="deck-title">{t.chooseCardHint}</h2>
-            </div>
-            <VoteState status={voteStatus} t={t} />
-            {isHost && (
-              <Button
-                type="button"
-                className="dock-reveal"
-                onClick={() => {
-                  const id = identity.current;
-                  if (id) void act({ type: "reveal", code: state.code, ...id });
-                }}
-              >
-                {t.reveal}
-              </Button>
-            )}
-          </div>
+          <h2 id="deck-title" className="sr-only">
+            {t.chooseCardHint}
+          </h2>
+          <RoundBar
+            state={state}
+            lang={lang}
+            canManage={isHost}
+            onReveal={() => {
+              const id = identity.current;
+              if (id) void act({ type: "reveal", code: state.code, ...id });
+            }}
+            onReset={() => {
+              const id = identity.current;
+              if (id) {
+                setPicked(null);
+                void act({ type: "revote", code: state.code, ...id });
+              }
+            }}
+          />
+          <VoteState status={voteStatus} t={t} />
           <Deck
             scale={state.scale}
             picked={picked ?? me?.vote ?? null}
@@ -1639,6 +1645,18 @@ function Seat({
       ? "Хранитель стола"
       : "Keeper of the Table"
     : titles[titleSeed % titles.length];
+  const portraits = [
+    "xs-knopysh-shmyg",
+    "s-yunga-shmyg",
+    "m-master-bez-khlopot",
+    "unknown-orakul-tumannnik",
+    "l-ser-dobrotyazh",
+    "xl-arkhimag-neprostoi",
+    "coffee-traktirshchik-bodrin",
+    "m-sledopyt-vernyak",
+  ];
+  const portrait = portraits[titleSeed % portraits.length];
+  const thinking = task && !revealed && player.online && !player.voted;
   const displayName = `${player.name}${isYou ? (lang === "ru" ? " · вы" : " · you") : ""}${snow ? " ☃" : ""}`;
   let face: "back" | "front" | "empty" = "empty";
   if (task && player.voted && !revealed) face = "back";
@@ -1661,7 +1679,22 @@ function Seat({
         )}
         aria-hidden="true"
       >
-        {player.name.slice(0, 1).toUpperCase()}
+        <span
+          className="player-portrait"
+          style={{ backgroundImage: `url(/cards/v2/${portrait}.jpg)` }}
+        />
+        {thinking && (
+          <span className="thinking-dots">
+            <i />
+            <i />
+            <i />
+          </span>
+        )}
+        {!player.online && (
+          <span className="player-away-mark">
+            <WifiOff />
+          </span>
+        )}
         {player.isHost ? <Crown className="player-crown" /> : null}
         {isYou ? <span className="player-you-badge">{lang === "ru" ? "ВЫ" : "YOU"}</span> : null}
       </div>
@@ -1797,95 +1830,83 @@ function ConsensusPanel({
 
   return (
     <section className="consensus-card">
-      <div className="consensus-score">
-        <div
-          className={cn("score-ring", `is-${analysis.level}`)}
-          style={{ "--score": `${analysis.consensusPct * 3.6}deg` } as React.CSSProperties}
-        >
-          <span>{analysis.consensusPct}%</span>
+      <div className="distribution-heading">
+        <div>
+          <span className="eyebrow">{t.mode}</span>
+          <strong>{cardFaceLabel(analysis.mode)}</strong>
         </div>
         <div>
           <span className="eyebrow">{t.consensus}</span>
-          <h2>{levelLabel}</h2>
-          <p>{insight}</p>
+          <strong>{analysis.consensusPct}%</strong>
+          <small>{levelLabel}</small>
         </div>
       </div>
-      <div
-        className="vote-histogram"
-        aria-label={lang === "ru" ? "Распределение голосов" : "Vote distribution"}
-      >
-        {state.scale.slice(0, 6).map((value) => {
-          const count = state.players.filter((p) => p.vote === value).length;
-          const max = Math.max(
-            1,
-            ...state.scale.slice(0, 6).map((v) => state.players.filter((p) => p.vote === v).length),
-          );
-          return (
-            <div key={value} className={cn(analysis.mode === value && "is-mode")}>
-              <b>{count}</b>
-              <div>
-                <i style={{ height: `${(count / max) * 100}%` }} />
-              </div>
-              <span>{cardFaceLabel(value)}</span>
-            </div>
-          );
-        })}
-      </div>
+      <VoteBars players={state.players} scale={state.scale.slice(0, 6)} lang={lang} />
       {analysis.level === "low" && (
         <p className="debate-label">
           {lang === "ru" ? "Будет жаркий спор" : "Spirited debate ahead"}
         </p>
       )}
-      <MiniFaces values={cardValues} lang={lang} />
-      <dl className="consensus-stats">
-        <div>
-          <dt>{t.median}</dt>
-          <dd>{cardFaceLabel(analysis.median)}</dd>
+      <p className="distribution-caption">
+        {analysis.values.length} {lang === "ru" ? "карт" : "cards"} · {t.median}:{" "}
+        <b>{cardFaceLabel(analysis.median)}</b>
+      </p>
+      <p className="distribution-insight">{insight}</p>
+      <details className="distribution-details">
+        <summary>{lang === "ru" ? "Подробнее об оценках" : "Estimate details"}</summary>
+        <MiniFaces values={cardValues} lang={lang} />
+        <dl className="consensus-stats">
+          <div>
+            <dt>{t.median}</dt>
+            <dd>{cardFaceLabel(analysis.median)}</dd>
+          </div>
+          <div>
+            <dt>{t.mode}</dt>
+            <dd>{cardFaceLabel(analysis.mode)}</dd>
+          </div>
+          <div>
+            <dt>{t.range}</dt>
+            <dd>{cardFaceLabel(analysis.range)}</dd>
+          </div>
+          <div>
+            <dt>{t.outliers}</dt>
+            <dd>
+              {outlierValues.length
+                ? outlierValues.map((value) => cardFaceLabel(value)).join(", ")
+                : t.none}
+            </dd>
+          </div>
+        </dl>
+        {questionCount || coffeeCount ? (
+          <div className="special-signals">
+            <strong>{t.specialVotes}</strong>
+            {questionCount ? (
+              <span>
+                ? · {t.clearQuestion} ({questionCount})
+              </span>
+            ) : null}
+            {coffeeCount ? (
+              <span>
+                ☕ · {t.breakRequested} ({coffeeCount})
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+        <div className="consensus-actions">
+          <Button type="button" variant="ghost" onClick={onShowcase}>
+            <Sparkles aria-hidden="true" />
+            {t.expandShowcase}
+          </Button>
         </div>
-        <div>
-          <dt>{t.mode}</dt>
-          <dd>{cardFaceLabel(analysis.mode)}</dd>
-        </div>
-        <div>
-          <dt>{t.range}</dt>
-          <dd>{cardFaceLabel(analysis.range)}</dd>
-        </div>
-        <div>
-          <dt>{t.outliers}</dt>
-          <dd>
-            {outlierValues.length
-              ? outlierValues.map((value) => cardFaceLabel(value)).join(", ")
-              : t.none}
-          </dd>
-        </div>
-      </dl>
-      {questionCount || coffeeCount ? (
-        <div className="special-signals">
-          <strong>{t.specialVotes}</strong>
-          {questionCount ? (
-            <span>
-              ? · {t.clearQuestion} ({questionCount})
-            </span>
-          ) : null}
-          {coffeeCount ? (
-            <span>
-              ☕ · {t.breakRequested} ({coffeeCount})
-            </span>
-          ) : null}
-        </div>
-      ) : null}
-      <div className="consensus-actions">
-        <Button type="button" variant="ghost" onClick={onShowcase}>
-          <Sparkles aria-hidden="true" />
-          {t.expandShowcase}
-        </Button>
-      </div>
+      </details>
     </section>
   );
 }
 
 function HostControls({
   t,
+  lang,
+  canManage,
   state,
   resultPick,
   decisionNote,
@@ -1896,6 +1917,8 @@ function HostControls({
   onFinalize,
 }: {
   t: (typeof I18N)[Lang];
+  lang: Lang;
+  canManage: boolean;
   state: Snapshot;
   resultPick: CardValue | null;
   decisionNote: string;
@@ -1906,57 +1929,37 @@ function HostControls({
   onFinalize: () => void;
 }) {
   return (
-    <section className="host-controls">
-      {!state.revealed ? (
-        <>
-          <div>
-            <strong>{t.reveal}</strong>
-            <span>{t.revealHint}</span>
-          </div>
-          <Button type="button" onClick={onReveal}>
-            {t.reveal}
-          </Button>
-        </>
-      ) : (
-        <div className="finalize-panel">
-          <div className="finalize-title">
-            <div>
-              <strong>{t.finalEstimate}</strong>
-              <span>{t.pickResult}</span>
-            </div>
-            <Button type="button" variant="ghost" onClick={onRevote}>
-              {t.revote}
-            </Button>
-          </div>
-          <div className="result-grid">
-            {state.scale.map((value) => (
-              <button
-                key={value}
-                type="button"
-                className={cn(resultPick === value && "is-selected")}
-                onClick={() => onResultPick(value)}
-              >
-                {cardFaceLabel(value)}
-              </button>
-            ))}
-          </div>
+    <div className="round-finalize">
+      <RoundBar
+        state={state}
+        lang={lang}
+        canManage={canManage}
+        selected={resultPick}
+        onPick={onResultPick}
+        onReveal={onReveal}
+        onReset={onRevote}
+        onFinalize={onFinalize}
+      />
+      {canManage && (
+        <details className="round-decision-note">
+          <summary>
+            {t.decisionNote}
+            {decisionNote.trim() ? " ✓" : ""}
+          </summary>
           <label className="decision-note-field">
-            <span>{t.decisionNote}</span>
+            <span className="sr-only">{t.decisionNote}</span>
             <Textarea
               value={decisionNote}
               maxLength={600}
-              rows={3}
+              rows={2}
               placeholder={t.decisionNotePh}
               onChange={(event) => onDecisionNote(event.target.value)}
             />
             <small>{t.decisionNoteHint}</small>
           </label>
-          <Button type="button" disabled={!resultPick} onClick={onFinalize}>
-            {t.saveResult}
-          </Button>
-        </div>
+        </details>
       )}
-    </section>
+    </div>
   );
 }
 

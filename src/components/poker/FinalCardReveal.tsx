@@ -1,3 +1,4 @@
+import { FinalFireworks } from "./FinalFireworks";
 import { useEffect, useRef } from "react";
 import { cardFaceLabel, cardLore } from "@/lib/poker/cards";
 import { SIZE_RANK, type HistoryEntry } from "@/lib/poker/types";
@@ -50,6 +51,8 @@ export function FinalCardReveal({
       <button className="final-close" type="button" autoFocus onClick={onClose}>
         {ru ? "Продолжить" : "Continue"} ×
       </button>
+      <FinalFireworks />
+      <div className="final-flash" aria-hidden="true" />
       <div className="final-aura" aria-hidden="true" />
       <div className="final-card-arrival">
         <div
