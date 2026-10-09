@@ -4704,3 +4704,25 @@
   transform: rotateY(180deg);
   backface-visibility: hidden;
 }
+/* Keep upper and lower side ballots in separate physical places. */
+.view-table .player-seat[data-table-slot="1"] .table-card-stage {
+  left: -25%;
+  top: 45%;
+}
+.view-table .player-seat[data-table-slot="5"] .table-card-stage {
+  left: 125%;
+  top: 45%;
+}
+.view-table .player-seat[data-table-slot="2"] .table-card-stage {
+  left: -25%;
+  top: 5%;
+}
+.view-table .player-seat[data-table-slot="4"] .table-card-stage {
+  left: 125%;
+  top: 5%;
+}
+@media (max-width: 759px) {
+  .view-table .table-scene {
+    height: clamp(250px, calc(100dvh - 600px), 440px);
+  }
+}
