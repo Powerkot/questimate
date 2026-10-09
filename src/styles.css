@@ -4726,3 +4726,221 @@
     height: clamp(250px, calc(100dvh - 600px), 440px);
   }
 }
+
+/* 2.0.2 — adventurer nameplates and a parchment quest page. */
+.player-avatar .player-crown {
+  position: absolute;
+  z-index: 2;
+  top: -13px;
+  left: 50%;
+  width: 23px;
+  height: 23px;
+  transform: translateX(-50%);
+  color: #f5cf79;
+  fill: #c28b40;
+  stroke-width: 1.5;
+  filter: drop-shadow(0 2px 2px #170a06);
+}
+.player-you-badge {
+  position: absolute;
+  z-index: 2;
+  bottom: -7px;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 1px solid #b48a48;
+  border-radius: 20px;
+  padding: 2px 8px;
+  background: #2a1709;
+  color: #ffe4a5;
+  font: 9px/1 var(--font-display);
+  letter-spacing: 0.13em;
+}
+.view-table .player-meta,
+.view-cards .player-meta {
+  margin-top: 6px;
+  text-align: center;
+}
+.view-table .player-meta button,
+.view-cards .player-meta button {
+  display: block;
+  margin-inline: auto;
+  min-height: 22px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  padding: 0 2px;
+  color: #ffebb3;
+  font:
+    700 16px/1.15 Georgia,
+    "Times New Roman",
+    serif;
+  text-align: center;
+  text-shadow: 0 2px 6px #000;
+}
+.player-meta button:focus-visible {
+  outline: 2px solid #f5cf79;
+  outline-offset: 3px;
+}
+.view-table .player-meta > .player-title,
+.view-cards .player-meta > .player-title {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  color: #c3a06a;
+  font:
+    italic 12px/1.2 Georgia,
+    "Times New Roman",
+    serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 2px 4px #000;
+}
+.view-table .player-meta > .player-status,
+.view-cards .player-meta > .player-status {
+  display: block;
+  margin-top: 4px;
+  color: #a99170;
+  font: 9px/1.2 var(--font-display);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+.task-card,
+.quest-card.new-quest {
+  position: relative;
+  display: block;
+  min-height: 0;
+  border: 1px solid #af9364;
+  border-radius: 5px;
+  padding: 24px 30px 28px;
+  color: #3a240f;
+  background:
+    radial-gradient(ellipse at 30% 15%, #fff7dfaa, transparent 55%),
+    repeating-linear-gradient(7deg, #70502704 0 1px, transparent 1px 4px),
+    linear-gradient(110deg, #e8d9b4, #eee1c3 45%, #d5bc8e);
+  box-shadow:
+    0 12px 32px #0008,
+    inset 0 0 30px #79522966,
+    inset 0 1px #fff1cf;
+}
+.task-card::before {
+  display: none;
+}
+.task-card::after,
+.quest-card.new-quest::after {
+  content: "Q";
+  position: absolute;
+  z-index: 3;
+  inset: auto 10px 8px auto;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 2px solid #a74432;
+  border-radius: 45% 55% 44% 56%;
+  background: radial-gradient(circle at 30% 25%, #c35a44, #7b211c);
+  color: #e9b18b;
+  font:
+    700 13px Georgia,
+    serif;
+  opacity: 0.9;
+  box-shadow:
+    0 2px 4px #44231366,
+    inset 0 0 0 2px #8c3022;
+  pointer-events: none;
+}
+.task-card .task-corner {
+  display: none;
+}
+.task-card .eyebrow,
+.new-quest .eyebrow {
+  color: #8a6531;
+  font-family: var(--font-display);
+  letter-spacing: 0.19em;
+  text-shadow: none;
+}
+.task-card h1,
+.new-quest h1 {
+  max-width: 38ch;
+  margin: 10px 0 12px;
+  color: #3a240f;
+  font: 700 clamp(22px, 2.5vw, 34px)/1.12 var(--font-display);
+  text-shadow: 0 1px #fff1cf88;
+  overflow-wrap: anywhere;
+}
+.task-card .task-copy {
+  color: #654727;
+  font:
+    italic clamp(15px, 1.5vw, 19px)/1.45 Georgia,
+    "Times New Roman",
+    serif;
+  text-shadow: none;
+}
+.task-card .text-link {
+  color: #764814;
+  text-shadow: none;
+}
+.new-quest input,
+.new-quest textarea {
+  border-color: #9f7c48;
+  background: #fff5d844;
+  color: #3a240f;
+  color-scheme: light;
+}
+.new-quest input::placeholder,
+.new-quest textarea::placeholder {
+  color: #785b38;
+}
+.new-quest > button {
+  border: 1px solid #fff0bc;
+  background: linear-gradient(#e9cb81, #b47a2c);
+  color: #321d0b;
+  box-shadow:
+    0 6px 16px #63442155,
+    inset 0 1px #fff0bc;
+  font-family: var(--font-display);
+}
+@media (max-width: 759px) {
+  .view-table .player-meta button {
+    font-size: 12px;
+    min-height: 17px;
+  }
+  .view-table .player-meta > .player-title {
+    font-size: 9px;
+  }
+  .view-table .player-meta > .player-status {
+    font-size: 7px;
+    letter-spacing: 0.08em;
+    margin-top: 3px;
+  }
+  .player-avatar .player-crown {
+    width: 19px;
+    height: 19px;
+    top: -11px;
+  }
+  .player-you-badge {
+    font-size: 7px;
+    padding: 2px 5px;
+    bottom: -5px;
+  }
+  .task-card,
+  .quest-card.new-quest {
+    padding: 16px 20px 22px;
+  }
+  .task-card h1,
+  .new-quest h1 {
+    font-size: 20px;
+    margin: 8px 0;
+  }
+  .task-card .task-copy {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+}
+.view-table .table-scene {
+  margin-top: 16px;
+}
+@media (min-width: 760px) {
+  .view-table .table-scene {
+    height: clamp(270px, calc(100dvh - 650px), 500px);
+  }
+}

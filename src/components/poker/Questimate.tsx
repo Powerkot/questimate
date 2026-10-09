@@ -1494,9 +1494,6 @@ function TaskCard({
   const descriptionId = `task-description-${task.id}`;
   return (
     <article className="quest-card task-card">
-      <span className="task-scroll-art" aria-hidden="true">
-        <img src="/room/task-scroll.webp" alt="" />
-      </span>
       <div className="task-card-copy">
         <span className="eyebrow">{t.currentTask}</span>
         <h1>{task.title}</h1>
@@ -1615,6 +1612,33 @@ function Seat({
   onNameClick: (x: number, y: number) => void;
 }) {
   const snow = player.snowUntil > now;
+  const titles =
+    lang === "ru"
+      ? [
+          "Укротитель багов",
+          "Оракул оценок",
+          "Рыцарь деплоя",
+          "Маг рефакторинга",
+          "Хранитель бэклога",
+          "Повелитель дедлайнов",
+        ]
+      : [
+          "Bug Tamer",
+          "Oracle of Estimates",
+          "Knight of Deploys",
+          "Refactoring Mage",
+          "Backlog Keeper",
+          "Lord of Deadlines",
+        ];
+  const titleSeed = Array.from(player.id).reduce(
+    (hash, char) => (hash * 31 + char.charCodeAt(0)) >>> 0,
+    0,
+  );
+  const playerTitle = player.isHost
+    ? lang === "ru"
+      ? "Хранитель стола"
+      : "Keeper of the Table"
+    : titles[titleSeed % titles.length];
   const displayName = `${player.name}${isYou ? (lang === "ru" ? " · вы" : " · you") : ""}${snow ? " ☃" : ""}`;
   let face: "back" | "front" | "empty" = "empty";
   if (task && player.voted && !revealed) face = "back";
@@ -1638,6 +1662,8 @@ function Seat({
         aria-hidden="true"
       >
         {player.name.slice(0, 1).toUpperCase()}
+        {player.isHost ? <Crown className="player-crown" /> : null}
+        {isYou ? <span className="player-you-badge">{lang === "ru" ? "ВЫ" : "YOU"}</span> : null}
       </div>
       <div className="player-meta" title={displayName}>
         <button
@@ -1647,12 +1673,17 @@ function Seat({
           aria-label={displayName}
           onClick={(event) => onNameClick(event.clientX, event.clientY)}
         >
-          {player.isHost && player.online ? <Crown aria-hidden="true" /> : null}
-          <span className={cn("player-name", displayName.length > 15 && "is-long")}>
-            {displayName}
+          <span className={cn("player-name", player.name.length > 15 && "is-long")}>
+            {player.name}
+            {snow ? " ☃" : ""}
           </span>
         </button>
-        <span>{!player.online ? t.away : player.voted ? t.voted : t.waiting}</span>
+        <span className="player-title" title={playerTitle}>
+          {playerTitle}
+        </span>
+        <span className="player-status">
+          {!player.online ? t.away : player.voted ? t.voted : t.waiting}
+        </span>
       </div>
       <div className={cn("table-card-stage", player.voted && "has-card")}>
         <MagicCard
