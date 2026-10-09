@@ -5537,3 +5537,216 @@
 .distribution-details .consensus-actions {
   margin-top: 12px;
 }
+
+/* 2.0.4 — one shared plane for the table, seats and ballots.
+ * Seat anchors follow an outer ellipse; cards follow the same angles inside it.
+ * Geometry must not depend on the height of a player's name or viewport height.
+ */
+.player-place {
+  display: contents;
+}
+.view-table .table-scene,
+.has-hand .view-table .table-scene {
+  container-type: inline-size;
+  width: 100%;
+  max-width: min(100%, max(720px, calc((100dvh - 590px) * 1.6)));
+  height: auto;
+  min-height: 0;
+  aspect-ratio: 16 / 10;
+  margin: 16px auto 0;
+}
+.oval-table {
+  box-sizing: border-box;
+  left: 14%;
+  top: 18%;
+  width: 72%;
+  height: 64%;
+  border: 0;
+  background:
+    radial-gradient(ellipse at 50% 32%, #ffc97628, transparent 64%),
+    radial-gradient(ellipse, transparent 45%, #130905ab 100%),
+    url("/room/oak-grain-v2.webp") center / cover,
+    #58331d;
+  box-shadow:
+    inset 0 0 0 5px #67451c,
+    inset 0 0 0 7px #d5a34a,
+    inset 0 0 0 9px #3b2411,
+    inset 0 0 0 10px #ffdda23d,
+    inset 0 0 45px #16090499,
+    0 10px 0 #432916,
+    0 16px 0 #23150e,
+    0 28px 30px #0009;
+}
+.oval-table::before {
+  inset: 18%;
+  border-color: #e9c37f30;
+  box-shadow: 0 0 0 3px #1c0c0512;
+}
+.oval-table > span {
+  font-size: clamp(30px, 6cqw, 60px);
+  color: #f4d09324;
+}
+.table-comet {
+  inset: 0;
+}
+.view-table .table-scene-shade {
+  background: radial-gradient(ellipse, transparent 55%, #02050930 100%);
+}
+.view-table .player-seat[data-table-slot] {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  transform: none;
+  pointer-events: none;
+}
+.view-table .player-seat[data-table-slot="0"] {
+  --seat-x: 50%;
+  --seat-y: 8%;
+  --card-x: 50%;
+  --card-y: 28%;
+  --card-angle: 0deg;
+}
+.view-table .player-seat[data-table-slot="1"] {
+  --seat-x: 86.4%;
+  --seat-y: 31%;
+  --card-x: 73.4%;
+  --card-y: 38%;
+  --card-angle: -10deg;
+}
+.view-table .player-seat[data-table-slot="2"] {
+  --seat-x: 86.4%;
+  --seat-y: 69%;
+  --card-x: 73.4%;
+  --card-y: 62%;
+  --card-angle: -10deg;
+}
+.view-table .player-seat[data-table-slot="3"] {
+  --seat-x: 50%;
+  --seat-y: 92%;
+  --card-x: 50%;
+  --card-y: 72%;
+  --card-angle: 0deg;
+}
+.view-table .player-seat[data-table-slot="4"] {
+  --seat-x: 13.6%;
+  --seat-y: 69%;
+  --card-x: 26.6%;
+  --card-y: 62%;
+  --card-angle: 10deg;
+}
+.view-table .player-seat[data-table-slot="5"] {
+  --seat-x: 13.6%;
+  --seat-y: 31%;
+  --card-x: 26.6%;
+  --card-y: 38%;
+  --card-angle: 10deg;
+}
+.view-table .player-place {
+  position: absolute;
+  left: var(--seat-x);
+  top: var(--seat-y);
+  transform: translate(-50%, -50%);
+  width: clamp(90px, 18cqw, 150px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  pointer-events: auto;
+}
+.view-table .player-avatar {
+  width: clamp(36px, 6cqw, 56px);
+  height: clamp(36px, 6cqw, 56px);
+}
+.view-table .player-meta {
+  margin-top: 2px;
+}
+.view-table .player-seat[data-table-slot] .table-card-stage {
+  position: absolute;
+  left: var(--card-x);
+  top: var(--card-y);
+  bottom: auto;
+  width: clamp(32px, 5.2cqw, 56px);
+  height: auto;
+  aspect-ratio: 5 / 7;
+  transform: translate(-50%, -50%);
+  perspective: 600px;
+  pointer-events: none;
+}
+.view-table .table-card-stage:not(.has-card) {
+  visibility: hidden;
+}
+.view-table .table-card-stage .mc,
+.view-table .table-card-stage .mc-hero {
+  transform: rotate(var(--card-angle));
+  aspect-ratio: 5 / 7;
+}
+.view-table .table-card-stage.has-card {
+  animation: table-ballot-arrival 0.4s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+@keyframes table-ballot-arrival {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 14px)) scale(0.65);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+@media (max-width: 759px) {
+  .view-table .table-scene,
+  .has-hand .view-table .table-scene {
+    aspect-ratio: 1 / 1;
+    max-width: 100%;
+    margin-top: 8px;
+  }
+  .view-table .player-seat[data-table-slot="0"] {
+    --seat-y: 12%;
+    --card-y: 32%;
+  }
+  .view-table .player-seat[data-table-slot="3"] {
+    --seat-y: 88%;
+    --card-y: 68%;
+  }
+  .view-table .player-seat[data-table-slot="1"],
+  .view-table .player-seat[data-table-slot="2"] {
+    --card-x: 68%;
+  }
+  .view-table .player-seat[data-table-slot="4"],
+  .view-table .player-seat[data-table-slot="5"] {
+    --card-x: 32%;
+  }
+  .view-table .player-place {
+    width: 23%;
+    gap: 2px;
+  }
+  .view-table .player-meta button {
+    font-size: 12px;
+    min-height: 18px;
+  }
+  .view-table .player-meta > .player-title {
+    font-size: 10px;
+  }
+  .view-table .player-meta > .player-status {
+    font-size: 7px;
+    letter-spacing: 0.08em;
+    margin-top: 3px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .view-table .table-card-stage.has-card {
+    animation: none;
+  }
+}
+.view-table .table-card-stage .mc-symbol-front {
+  gap: 0;
+  padding: 2px;
+}
+.view-table .table-card-stage .mc-symbol-front > span {
+  font-size: clamp(12px, 1.8cqw, 16px);
+  letter-spacing: -0.06em;
+}
+.view-table .table-card-stage .mc-symbol-front small {
+  display: none;
+}

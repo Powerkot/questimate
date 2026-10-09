@@ -1671,52 +1671,54 @@ function Seat({
       )}
       data-table-slot={slot}
     >
-      <div
-        className={cn(
-          "player-avatar",
-          task && !revealed && player.online && !player.voted && "is-thinking",
-          player.voted && "has-voted",
-        )}
-        aria-hidden="true"
-      >
-        <span
-          className="player-portrait"
-          style={{ backgroundImage: `url(/cards/v2/${portrait}.jpg)` }}
-        />
-        {thinking && (
-          <span className="thinking-dots">
-            <i />
-            <i />
-            <i />
-          </span>
-        )}
-        {!player.online && (
-          <span className="player-away-mark">
-            <WifiOff />
-          </span>
-        )}
-        {player.isHost ? <Crown className="player-crown" /> : null}
-        {isYou ? <span className="player-you-badge">{lang === "ru" ? "ВЫ" : "YOU"}</span> : null}
-      </div>
-      <div className="player-meta" title={displayName}>
-        <button
-          type="button"
-          disabled={isYou}
-          title={displayName}
-          aria-label={displayName}
-          onClick={(event) => onNameClick(event.clientX, event.clientY)}
+      <div className="player-place">
+        <div
+          className={cn(
+            "player-avatar",
+            task && !revealed && player.online && !player.voted && "is-thinking",
+            player.voted && "has-voted",
+          )}
+          aria-hidden="true"
         >
-          <span className={cn("player-name", player.name.length > 15 && "is-long")}>
-            {player.name}
-            {snow ? " ☃" : ""}
+          <span
+            className="player-portrait"
+            style={{ backgroundImage: `url(/cards/v2/${portrait}.jpg)` }}
+          />
+          {thinking && (
+            <span className="thinking-dots">
+              <i />
+              <i />
+              <i />
+            </span>
+          )}
+          {!player.online && (
+            <span className="player-away-mark">
+              <WifiOff />
+            </span>
+          )}
+          {player.isHost ? <Crown className="player-crown" /> : null}
+          {isYou ? <span className="player-you-badge">{lang === "ru" ? "ВЫ" : "YOU"}</span> : null}
+        </div>
+        <div className="player-meta" title={displayName}>
+          <button
+            type="button"
+            disabled={isYou}
+            title={displayName}
+            aria-label={displayName}
+            onClick={(event) => onNameClick(event.clientX, event.clientY)}
+          >
+            <span className={cn("player-name", player.name.length > 15 && "is-long")}>
+              {player.name}
+              {snow ? " ☃" : ""}
+            </span>
+          </button>
+          <span className="player-title" title={playerTitle}>
+            {playerTitle}
           </span>
-        </button>
-        <span className="player-title" title={playerTitle}>
-          {playerTitle}
-        </span>
-        <span className="player-status">
-          {!player.online ? t.away : player.voted ? t.voted : t.waiting}
-        </span>
+          <span className="player-status">
+            {!player.online ? t.away : player.voted ? t.voted : t.waiting}
+          </span>
+        </div>
       </div>
       <div className={cn("table-card-stage", player.voted && "has-card")}>
         <MagicCard
