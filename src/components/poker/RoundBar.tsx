@@ -19,7 +19,8 @@ export function VoteBars({
   selected?: CardValue | null;
   onPick?: (value: CardValue) => void;
 }) {
-  const counts = scale.map((value) => players.filter((p) => p.vote === value).length);
+  const voters = scale.map((value) => players.filter((p) => p.vote === value));
+  const counts = voters.map((group) => group.length);
   const max = Math.max(1, ...counts);
   return (
     <div
@@ -27,7 +28,8 @@ export function VoteBars({
       aria-label={lang === "ru" ? "Распределение голосов" : "Vote distribution"}
     >
       {scale.map((value, index) => {
-        const label = `${cardFaceLabel(value)} · ${lang === "ru" ? "голосов" : "votes"}: ${counts[index]}`;
+        const names = voters[index].map((player) => player.name).join(", ");
+        const label = `${cardFaceLabel(value)} · ${lang === "ru" ? "голосов" : "votes"}: ${counts[index]}${names ? ` · ${names}` : ""}`;
         const contents = (
           <>
             <b className="estimate-count">{counts[index]}</b>
@@ -35,6 +37,7 @@ export function VoteBars({
               <i style={{ height: `${(counts[index] / max) * 100}%` }} />
             </span>
             <strong>{cardFaceLabel(value)}</strong>
+            <span className="estimate-voters">{names || "—"}</span>
           </>
         );
         return onPick ? (
