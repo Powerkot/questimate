@@ -5750,3 +5750,12 @@
 .view-table .table-card-stage .mc-symbol-front small {
   display: none;
 }
+/* Leave enough scroll room for the full fixed hand and lower nameplate. */
+.quest-app.has-hand {
+  padding-bottom: 340px;
+}
+@media (max-width: 759px) {
+  .quest-app.has-hand {
+    padding-bottom: 320px;
+  }
+}
