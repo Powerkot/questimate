@@ -325,9 +325,10 @@ export function prepareDemoJoin(room: StoredRoom, playerId: string): void {
     room.variants = {};
   }
 
+  room.demoVotingAt = now();
   for (const demoBot of DEMO_BOTS) {
-    room.votes[demoBot.id] = demoBot.vote;
-    room.variants[demoBot.id] = selectVariantId(room, demoBot.id, demoBot.vote);
+    delete room.votes[demoBot.id];
+    delete room.variants[demoBot.id];
   }
 }
 
@@ -347,6 +348,21 @@ export function tickDemoRoom(room: StoredRoom): boolean {
   if (!room.players.some((p) => p.id === room.hostId && !p.leftAt)) {
     room.hostId = "botolga";
     changed = true;
+  }
+  if (room.task && !room.revealed && room.demoVotingAt) {
+    for (const [index, b] of DEMO_BOTS.entries()) {
+      const player = room.players.find((p) => p.id === b.id);
+      if (
+        !player ||
+        player.leftAt ||
+        room.votes[b.id] ||
+        now() - room.demoVotingAt < (index + 1) * 1400
+      )
+        continue;
+      room.votes[b.id] = b.vote;
+      room.variants[b.id] = selectVariantId(room, b.id, b.vote);
+      changed = true;
+    }
   }
   room.demoHit ??= {};
   const maxim = room.players.find((p) => p.id === "botmax1");
@@ -378,10 +394,12 @@ export function applyDemoAction(
   const room = action.type === "join" ? buildDemoRoom() : currentRoom;
   if (!room) return { room: null, result: { ok: false, error: "room_not_found" } };
 
+  const previousRound = room.roundId;
   const applied = applyAction(room, action);
   if (!applied.ok) return { room, result: { ok: false, error: applied.error } };
 
   if (action.type === "join") prepareDemoJoin(room, applied.you);
+  else if (previousRound !== room.roundId && room.task) room.demoVotingAt = now();
   tickDemoRoom(room);
 
   return {

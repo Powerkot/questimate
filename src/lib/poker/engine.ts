@@ -70,6 +70,7 @@ export function normalizeRoom(room: StoredRoom): StoredRoom {
   room.roundId ||= room.task?.id ?? makeId("r");
   room.variants ||= {};
   room.completedRounds ||= [];
+  room.queue ||= [];
   if (room.task && !room.task.startedAt) room.task.startedAt = now();
   const backs = cardBackIds();
   if (!backs.includes(room.cardBackId)) {
@@ -125,6 +126,7 @@ export function snapshot(room: StoredRoom, viewerId: string): Snapshot {
       snowUntil: room.snowUntil[p.id] && room.snowUntil[p.id] > t ? room.snowUntil[p.id] : 0,
     })),
     task: room.task,
+    queue: room.queue!.map((task) => ({ ...task })),
     revealed: room.revealed,
     roundId: room.roundId,
     deckVariants: Object.fromEntries(
@@ -209,6 +211,9 @@ export type RoomAction =
   | { type: "snowball"; playerId: string; token: string; targetId: string }
   | { type: "vote"; playerId: string; token: string; value: string }
   | { type: "set-task"; playerId: string; token: string; title: string; description: string }
+  | { type: "queue-task"; playerId: string; token: string; title: string; description: string }
+  | { type: "start-queued" | "remove-queued"; playerId: string; token: string; taskId: string }
+  | { type: "transfer-host" | "kick"; playerId: string; token: string; targetId: string }
   | { type: "reveal"; playerId: string; token: string }
   | { type: "revote"; playerId: string; token: string }
   | { type: "finalize"; playerId: string; token: string; result: string; note?: string }
@@ -234,6 +239,7 @@ export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
     const existingByToken = room.players.find((p) => p.token === action.token);
     const existingById = room.players.find((p) => p.id === action.playerId);
     const existing = existingByToken ?? existingById;
+    if (existing?.kickedAt) return { ok: false, error: "unauthorized" };
     if (existing) {
       if (existing.token !== action.token) return { ok: false, error: "unauthorized" };
       existing.name = name;
@@ -335,11 +341,68 @@ export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
     return { ok: true, room, you: me.id };
   }
 
+  if (action.type === "transfer-host" || action.type === "kick") {
+    if (!isHost) return { ok: false, error: "unauthorized" };
+    const target = activePlayers(room).find((p) => p.id === action.targetId);
+    if (!target || target.id === me.id) return { ok: false, error: "invalid" };
+    if (action.type === "transfer-host") room.hostId = target.id;
+    else {
+      target.leftAt = now();
+      target.kickedAt = now();
+      delete room.votes[target.id];
+      delete room.variants[target.id];
+      delete room.snowUntil[target.id];
+    }
+    pushChat(room, {
+      id: makeId("c"),
+      kind: "system",
+      ts: now(),
+      text:
+        action.type === "kick"
+          ? `${target.name} удалён из группы.`
+          : `${target.name} теперь ведущий.`,
+      textEn:
+        action.type === "kick"
+          ? `${target.name} was removed from the party.`
+          : `${target.name} is now the host.`,
+    });
+    return { ok: true, room, you: me.id };
+  }
+
+  if (action.type === "queue-task") {
+    if (!isHost) return { ok: false, error: "unauthorized" };
+    const title = action.title.trim().slice(0, 140);
+    if (!title || room.queue!.length >= 100) return { ok: false, error: "invalid" };
+    room.queue!.push({
+      id: makeId("t"),
+      title,
+      description: action.description.trim().slice(0, 4000),
+    });
+    return { ok: true, room, you: me.id };
+  }
+
+  if (action.type === "start-queued" || action.type === "remove-queued") {
+    if (!isHost) return { ok: false, error: "unauthorized" };
+    const task = room.queue!.find((t) => t.id === action.taskId);
+    if (!task || (action.type === "start-queued" && room.task))
+      return { ok: false, error: "invalid" };
+    room.queue = room.queue!.filter((t) => t.id !== task.id);
+    if (action.type === "start-queued") {
+      room.task = { ...task, startedAt: now() };
+      room.votes = {};
+      room.variants = {};
+      room.completedRounds = [];
+      room.roundId = makeId("r");
+      room.revealed = false;
+    }
+    return { ok: true, room, you: me.id };
+  }
+
   if (action.type === "set-task") {
     if (!isHost) return { ok: false, error: "unauthorized" };
     const title = action.title.trim().slice(0, 140);
     const description = action.description.trim().slice(0, 4000);
-    if (!title) return { ok: false, error: "invalid" };
+    if (!title || room.task) return { ok: false, error: "invalid" };
     room.task = { id: makeId("t"), title, description, startedAt: now() };
     room.votes = {};
     room.roundId = makeId("r");

@@ -36,6 +36,18 @@ const actionSchema = z.discriminatedUnion("type", [
     title: z.string().max(140),
     description: z.string().max(4000),
   }),
+  z.object({
+    type: z.literal("queue-task"),
+    code,
+    playerId: id,
+    token,
+    title: z.string().max(140),
+    description: z.string().max(4000),
+  }),
+  z.object({ type: z.literal("start-queued"), code, playerId: id, token, taskId: id }),
+  z.object({ type: z.literal("remove-queued"), code, playerId: id, token, taskId: id }),
+  z.object({ type: z.literal("transfer-host"), code, playerId: id, token, targetId: id }),
+  z.object({ type: z.literal("kick"), code, playerId: id, token, targetId: id }),
   z.object({ type: z.literal("reveal"), code, playerId: id, token }),
   z.object({ type: z.literal("revote"), code, playerId: id, token }),
   z.object({

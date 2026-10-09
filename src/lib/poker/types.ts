@@ -75,6 +75,7 @@ export type StoredPlayer = {
   joinedAt?: number;
   leftAt?: number;
   lastLeaveNoticeAt?: number;
+  kickedAt?: number;
 };
 
 export type RoomPassword = {
@@ -95,9 +96,11 @@ export type StoredRoom = {
   revealed: boolean;
   history: HistoryEntry[];
   completedRounds?: HistoryRound[];
+  queue?: Task[];
   chat: ChatEntry[];
   snowUntil: Record<string, number>;
   demoHit?: Record<string, boolean>;
+  demoVotingAt?: number;
 };
 
 export type PublicPlayer = {
@@ -120,6 +123,7 @@ export type Snapshot = {
   task: Task | null;
   revealed: boolean;
   roundId: string;
+  queue: Task[];
   deckVariants: Record<CardValue, string>;
   votesCount: number;
   scale: readonly CardValue[];
