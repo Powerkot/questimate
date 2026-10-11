@@ -1,3 +1,4 @@
+import { DECK_THEMES } from "@/lib/poker/card-themes";
 import { DeckThemeContext } from "./DeckThemeContext";
 import {
   Check,
@@ -1161,6 +1162,10 @@ function Lobby({
   onDemo: () => void;
   onLang: () => void;
 }) {
+  // Lobby mounts after session restoration on the client; keep one draw per visit.
+  const [lobbyDeckTheme] = useState(
+    () => DECK_THEMES[Math.floor(Math.random() * DECK_THEMES.length)],
+  );
   const [panel, setPanel] = useState<"create" | "join" | "demo" | "help" | null>(
     invitedCode ? "join" : null,
   );
@@ -1231,25 +1236,27 @@ function Lobby({
               ? "Все выбирают карту. Оценки открываются одновременно. Договориться становится проще."
               : "Everyone picks a card. Estimates are revealed together. Reaching agreement gets easier."}
           </p>
-          <div
-            className="lobby-card-fan"
-            aria-label={isRu ? "Оценки от XS до XXL" : "Estimates from XS to XXL"}
-          >
-            {(["xs", "s", "m", "l", "xl", "XXL"] as CardValue[]).map((v, i) => (
-              <div
-                key={v}
-                style={
-                  {
-                    "--fan-angle": `${(i - 2.5) * 9}deg`,
-                    "--fan-x": `${(i - 2.5) * 47}px`,
-                    "--fan-y": `${Math.abs(i - 2.5) * 7}px`,
-                  } as React.CSSProperties
-                }
-              >
-                <MagicCard value={v} face="front" size="deck" lang={lang} />
-              </div>
-            ))}
-          </div>
+          <DeckThemeContext.Provider value={lobbyDeckTheme}>
+            <div
+              className="lobby-card-fan"
+              aria-label={isRu ? "Оценки от XS до XXL" : "Estimates from XS to XXL"}
+            >
+              {(["xs", "s", "m", "l", "xl", "XXL"] as CardValue[]).map((v, i) => (
+                <div
+                  key={v}
+                  style={
+                    {
+                      "--fan-angle": `${(i - 2.5) * 9}deg`,
+                      "--fan-x": `${(i - 2.5) * 47}px`,
+                      "--fan-y": `${Math.abs(i - 2.5) * 7}px`,
+                    } as React.CSSProperties
+                  }
+                >
+                  <MagicCard value={v} face="front" size="deck" lang={lang} />
+                </div>
+              ))}
+            </div>
+          </DeckThemeContext.Provider>
           <div className="lobby-actions">
             <Button type="button" onClick={() => openPanel("create")}>
               {t.create}
