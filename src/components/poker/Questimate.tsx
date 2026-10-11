@@ -1,3 +1,4 @@
+import { DeckThemeContext } from "./DeckThemeContext";
 import {
   Check,
   CircleHelp,
@@ -467,491 +468,500 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
   };
 
   return (
-    <div
-      className={cn(
-        "quest-app",
-        `lang-${lang}`,
-        presentation && "is-presenting",
-        !presentation && `mobile-pane-${mobilePane}`,
-        state.task && !state.revealed && !presentation && "has-hand",
-      )}
-    >
-      <header className="quest-header">
-        <div className="room-header-context">
-          <BrandLockup />
-          <div className="room-identity">
-            <span className="room-label">{lang === "ru" ? "Комната" : "Room"}</span>
-            <button
+    <DeckThemeContext.Provider value={state.deckThemeId}>
+      <div
+        className={cn(
+          "quest-app",
+          `lang-${lang}`,
+          presentation && "is-presenting",
+          !presentation && `mobile-pane-${mobilePane}`,
+          state.task && !state.revealed && !presentation && "has-hand",
+        )}
+      >
+        <header className="quest-header">
+          <div className="room-header-context">
+            <BrandLockup />
+            <div className="room-identity">
+              <span className="room-label">{lang === "ru" ? "Комната" : "Room"}</span>
+              <button
+                type="button"
+                className="room-code"
+                onClick={async () => {
+                  const url = `${location.origin}/?room=${state.code}`;
+                  try {
+                    await navigator.clipboard.writeText(url);
+                    setCopied(true);
+                    window.setTimeout(() => setCopied(false), 1600);
+                  } catch {
+                    setError("network");
+                  }
+                }}
+                aria-label={copied ? t.copied : t.copy}
+              >
+                {state.passwordProtected ? (
+                  <LockKeyhole className="room-lock" aria-label={t.protectedRoom} />
+                ) : null}
+                <span className="room-code-value">{state.code}</span>
+                <span className="room-copy-control" aria-hidden="true">
+                  {copied ? <Check /> : <Copy />}
+                </span>
+              </button>
+            </div>
+          </div>
+          <div className="room-tools">
+            <Button
               type="button"
-              className="room-code"
-              onClick={async () => {
-                const url = `${location.origin}/?room=${state.code}`;
-                try {
-                  await navigator.clipboard.writeText(url);
-                  setCopied(true);
-                  window.setTimeout(() => setCopied(false), 1600);
-                } catch {
-                  setError("network");
-                }
-              }}
-              aria-label={copied ? t.copied : t.copy}
+              variant="tiny"
+              size="tiny"
+              className="header-tool header-presentation"
+              aria-label={presentation ? t.exitPresentation : t.presentation}
+              onClick={() => setPresentation((value) => !value)}
             >
-              {state.passwordProtected ? (
-                <LockKeyhole className="room-lock" aria-label={t.protectedRoom} />
-              ) : null}
-              <span className="room-code-value">{state.code}</span>
-              <span className="room-copy-control" aria-hidden="true">
-                {copied ? <Check /> : <Copy />}
+              <Presentation aria-hidden="true" />
+              <span className="hide-phone">
+                {presentation ? t.exitPresentation : t.presentation}
               </span>
+            </Button>
+            <Button
+              type="button"
+              variant="tiny"
+              size="tiny"
+              className="header-tool header-language"
+              aria-label={lang === "ru" ? "Switch to English" : "Переключить на русский"}
+              onClick={toggleLang}
+            >
+              <Globe2 aria-hidden="true" />
+              {lang === "ru" ? "EN" : "RU"}
+            </Button>
+            <Button
+              type="button"
+              variant="tiny"
+              size="tiny"
+              className="header-tool header-leave"
+              aria-label={t.leave}
+              onClick={() => void leaveRoom()}
+            >
+              <LogOut aria-hidden="true" />
+              <span className="hide-phone">{t.leave}</span>
+            </Button>
+          </div>
+        </header>
+
+        {error ? (
+          <div className="room-error" role="alert">
+            <WifiOff className="size-4" /> {errorText(error, t)}
+            <button type="button" onClick={() => setError(null)}>
+              ×
             </button>
           </div>
-        </div>
-        <div className="room-tools">
-          <Button
-            type="button"
-            variant="tiny"
-            size="tiny"
-            className="header-tool header-presentation"
-            aria-label={presentation ? t.exitPresentation : t.presentation}
-            onClick={() => setPresentation((value) => !value)}
-          >
-            <Presentation aria-hidden="true" />
-            <span className="hide-phone">{presentation ? t.exitPresentation : t.presentation}</span>
-          </Button>
-          <Button
-            type="button"
-            variant="tiny"
-            size="tiny"
-            className="header-tool header-language"
-            aria-label={lang === "ru" ? "Switch to English" : "Переключить на русский"}
-            onClick={toggleLang}
-          >
-            <Globe2 aria-hidden="true" />
-            {lang === "ru" ? "EN" : "RU"}
-          </Button>
-          <Button
-            type="button"
-            variant="tiny"
-            size="tiny"
-            className="header-tool header-leave"
-            aria-label={t.leave}
-            onClick={() => void leaveRoom()}
-          >
-            <LogOut aria-hidden="true" />
-            <span className="hide-phone">{t.leave}</span>
-          </Button>
-        </div>
-      </header>
+        ) : null}
 
-      {error ? (
-        <div className="room-error" role="alert">
-          <WifiOff className="size-4" /> {errorText(error, t)}
-          <button type="button" onClick={() => setError(null)}>
-            ×
-          </button>
-        </div>
-      ) : null}
-
-      <main className="quest-layout">
-        <div className="quest-stage">
-          <TaskCard
-            key={state.task?.id ?? "no-task"}
-            t={t}
-            task={state.task}
-            collapsed={taskCollapsed}
-            onToggle={() => setTaskCollapsed((value) => !value)}
-          />
-
-          {isHost && !state.task && !presentation ? (
-            <HostTaskForm
+        <main className="quest-layout">
+          <div className="quest-stage">
+            <TaskCard
+              key={state.task?.id ?? "no-task"}
               t={t}
-              onPost={(title, description) => {
+              task={state.task}
+              collapsed={taskCollapsed}
+              onToggle={() => setTaskCollapsed((value) => !value)}
+            />
+
+            {isHost && !state.task && !presentation ? (
+              <HostTaskForm
+                t={t}
+                onPost={(title, description) => {
+                  const id = identity.current;
+                  if (!id) return;
+                  void act({
+                    type: "set-task",
+                    code: state.code,
+                    playerId: id.playerId,
+                    token: id.token,
+                    title,
+                    description,
+                  });
+                  setTaskCollapsed(true);
+                }}
+              />
+            ) : !state.task ? (
+              <div className="waiting-card">
+                <Sparkles aria-hidden="true" />
+                <p>{t.waitingForTask}</p>
+              </div>
+            ) : null}
+
+            <section
+              className={cn("party-table", `view-${visualMode}`)}
+              aria-labelledby="party-title"
+            >
+              <div className="party-table-toolbar">
+                <div className="party-summary">
+                  <span className="eyebrow">
+                    <Users /> {t.team}
+                  </span>
+                  <div className="party-summary-row">
+                    <h2 id="party-title">
+                      {allVoted ? t.allVoted : t.votesOf(votedCount, state.players.length)}
+                    </h2>
+                    <div className="vote-progress" aria-hidden="true">
+                      <span
+                        style={{
+                          width: `${state.players.length ? (votedCount / state.players.length) * 100 : 0}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+                {!presentation ? (
+                  <div className="room-view-switch" role="group" aria-label={t.roomViewMode}>
+                    <button
+                      type="button"
+                      className={cn(visualMode === "table" && "is-active")}
+                      disabled={!tableEnabled}
+                      aria-pressed={visualMode === "table"}
+                      title={!tableEnabled ? t.tableCapacityHint : t.tableView}
+                      onClick={() => chooseRoomView("table")}
+                    >
+                      <Table2 aria-hidden="true" />
+                      <span>{t.tableView}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={cn(visualMode === "cards" && "is-active")}
+                      aria-pressed={visualMode === "cards"}
+                      onClick={() => chooseRoomView("cards")}
+                    >
+                      <LayoutGrid aria-hidden="true" />
+                      <span>{t.cardsView}</span>
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+              <div className="table-scene">
+                {visualMode === "table" ? (
+                  <>
+                    <div className="oval-table" aria-hidden="true">
+                      <span>Q</span>
+                      {state.revealed && state.task && (
+                        <div key={state.task.id} className="table-comet">
+                          <i />
+                        </div>
+                      )}
+                    </div>
+                    <div className="table-scene-shade" aria-hidden="true" />
+                  </>
+                ) : null}
+                <div
+                  className={cn("seat-grid", state.revealed && "is-revealed")}
+                  data-seat-count={state.players.length}
+                >
+                  {visiblePlayers.map(({ player, slot }) => (
+                    <Seat
+                      key={player.id}
+                      player={player}
+                      t={t}
+                      lang={lang}
+                      now={now}
+                      task={Boolean(state.task)}
+                      revealed={state.revealed}
+                      outlier={Boolean(analysis?.outliers.some((item) => item.id === player.id))}
+                      isYou={player.id === you}
+                      backId={state.cardBackId}
+                      slot={slot}
+                      onNameClick={(x, y) => setMenu({ x, y, targetId: player.id })}
+                    />
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            {state.task && state.revealed && !presentation ? (
+              <HostControls
+                analysis={analysis}
+                onShowcase={() => setVoteShowcaseOpen(true)}
+                lang={lang}
+                canManage={isHost}
+                t={t}
+                state={state}
+                resultPick={resultPick}
+                decisionNote={decisionNote}
+                onResultPick={setResultPick}
+                onDecisionNote={setDecisionNote}
+                onReveal={() => {
+                  const id = identity.current;
+                  if (!id) return;
+                  void act({
+                    type: "reveal",
+                    code: state.code,
+                    playerId: id.playerId,
+                    token: id.token,
+                  });
+                }}
+                onRevote={() => {
+                  const id = identity.current;
+                  if (!id) return;
+                  setPicked(null);
+                  void act({
+                    type: "revote",
+                    code: state.code,
+                    playerId: id.playerId,
+                    token: id.token,
+                  });
+                }}
+                onFinalize={() => {
+                  const id = identity.current;
+                  if (!id || !resultPick) return;
+                  void act({
+                    type: "finalize",
+                    code: state.code,
+                    playerId: id.playerId,
+                    token: id.token,
+                    result: resultPick,
+                    note: decisionNote.trim() || undefined,
+                  });
+                  setResultPick(null);
+                  setDecisionNote("");
+                }}
+              />
+            ) : null}
+            {analysis && presentation ? (
+              <ConsensusPanel
+                t={t}
+                lang={lang}
+                state={state}
+                analysis={analysis}
+                onShowcase={() => setVoteShowcaseOpen(true)}
+              />
+            ) : null}
+          </div>
+
+          {!presentation ? (
+            <SidePanel
+              t={t}
+              lang={lang}
+              tab={sideTab}
+              onTab={setSideTab}
+              you={you}
+              history={state.history}
+              queue={state.queue ?? []}
+              current={state.task}
+              onQueueAdd={async (title, description) => {
                 const id = identity.current;
-                if (!id) return;
+                return id
+                  ? act({ type: "queue-task", code: state.code, ...id, title, description })
+                  : false;
+              }}
+              onQueueStart={(taskId) => {
+                const id = identity.current;
+                if (id) {
+                  void act({ type: "start-queued", code: state.code, ...id, taskId });
+                  setMobilePane("table");
+                }
+              }}
+              onQueueRemove={(taskId) => {
+                const id = identity.current;
+                if (id) void act({ type: "remove-queued", code: state.code, ...id, taskId });
+              }}
+              isHost={isHost}
+              entries={state.chat}
+              onReestimate={(entry) => {
+                const id = identity.current;
+                if (!id || !isHost || state.task) return;
                 void act({
                   type: "set-task",
                   code: state.code,
                   playerId: id.playerId,
                   token: id.token,
-                  title,
-                  description,
+                  title: entry.title,
+                  description: entry.description,
                 });
                 setTaskCollapsed(true);
+                setMobilePane("table");
               }}
-            />
-          ) : !state.task ? (
-            <div className="waiting-card">
-              <Sparkles aria-hidden="true" />
-              <p>{t.waitingForTask}</p>
-            </div>
-          ) : null}
-
-          <section
-            className={cn("party-table", `view-${visualMode}`)}
-            aria-labelledby="party-title"
-          >
-            <div className="party-table-toolbar">
-              <div className="party-summary">
-                <span className="eyebrow">
-                  <Users /> {t.team}
-                </span>
-                <div className="party-summary-row">
-                  <h2 id="party-title">
-                    {allVoted ? t.allVoted : t.votesOf(votedCount, state.players.length)}
-                  </h2>
-                  <div className="vote-progress" aria-hidden="true">
-                    <span
-                      style={{
-                        width: `${state.players.length ? (votedCount / state.players.length) * 100 : 0}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-              {!presentation ? (
-                <div className="room-view-switch" role="group" aria-label={t.roomViewMode}>
-                  <button
-                    type="button"
-                    className={cn(visualMode === "table" && "is-active")}
-                    disabled={!tableEnabled}
-                    aria-pressed={visualMode === "table"}
-                    title={!tableEnabled ? t.tableCapacityHint : t.tableView}
-                    onClick={() => chooseRoomView("table")}
-                  >
-                    <Table2 aria-hidden="true" />
-                    <span>{t.tableView}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={cn(visualMode === "cards" && "is-active")}
-                    aria-pressed={visualMode === "cards"}
-                    onClick={() => chooseRoomView("cards")}
-                  >
-                    <LayoutGrid aria-hidden="true" />
-                    <span>{t.cardsView}</span>
-                  </button>
-                </div>
-              ) : null}
-            </div>
-            <div className="table-scene">
-              {visualMode === "table" ? (
-                <>
-                  <div className="oval-table" aria-hidden="true">
-                    <span>Q</span>
-                    {state.revealed && state.task && (
-                      <div key={state.task.id} className="table-comet">
-                        <i />
-                      </div>
-                    )}
-                  </div>
-                  <div className="table-scene-shade" aria-hidden="true" />
-                </>
-              ) : null}
-              <div
-                className={cn("seat-grid", state.revealed && "is-revealed")}
-                data-seat-count={state.players.length}
-              >
-                {visiblePlayers.map(({ player, slot }) => (
-                  <Seat
-                    key={player.id}
-                    player={player}
-                    t={t}
-                    lang={lang}
-                    now={now}
-                    task={Boolean(state.task)}
-                    revealed={state.revealed}
-                    outlier={Boolean(analysis?.outliers.some((item) => item.id === player.id))}
-                    isYou={player.id === you}
-                    backId={state.cardBackId}
-                    slot={slot}
-                    onNameClick={(x, y) => setMenu({ x, y, targetId: player.id })}
-                  />
-                ))}
-              </div>
-            </div>
-          </section>
-
-          {state.task && state.revealed && !presentation ? (
-            <HostControls
-              analysis={analysis}
-              onShowcase={() => setVoteShowcaseOpen(true)}
-              lang={lang}
-              canManage={isHost}
-              t={t}
-              state={state}
-              resultPick={resultPick}
-              decisionNote={decisionNote}
-              onResultPick={setResultPick}
-              onDecisionNote={setDecisionNote}
-              onReveal={() => {
+              onSay={(text) => {
                 const id = identity.current;
                 if (!id) return;
                 void act({
-                  type: "reveal",
+                  type: "chat",
                   code: state.code,
                   playerId: id.playerId,
                   token: id.token,
+                  text,
                 });
               }}
-              onRevote={() => {
-                const id = identity.current;
-                if (!id) return;
-                setPicked(null);
-                void act({
-                  type: "revote",
-                  code: state.code,
-                  playerId: id.playerId,
-                  token: id.token,
-                });
-              }}
-              onFinalize={() => {
-                const id = identity.current;
-                if (!id || !resultPick) return;
-                void act({
-                  type: "finalize",
-                  code: state.code,
-                  playerId: id.playerId,
-                  token: id.token,
-                  result: resultPick,
-                  note: decisionNote.trim() || undefined,
-                });
-                setResultPick(null);
-                setDecisionNote("");
+              onNick={(targetId, x, y) => {
+                if (targetId !== you) setMenu({ x, y, targetId });
               }}
             />
           ) : null}
-          {analysis && presentation ? (
-            <ConsensusPanel
-              t={t}
-              lang={lang}
-              state={state}
-              analysis={analysis}
-              onShowcase={() => setVoteShowcaseOpen(true)}
-            />
-          ) : null}
-        </div>
+        </main>
 
         {!presentation ? (
-          <SidePanel
-            t={t}
+          <nav
+            className="mobile-room-nav"
+            aria-label={lang === "ru" ? "Разделы комнаты" : "Room sections"}
+          >
+            <button
+              type="button"
+              className={cn(mobilePane === "table" && "is-active")}
+              onClick={() => setMobilePane("table")}
+            >
+              <Users aria-hidden="true" />
+              <span>{lang === "ru" ? "Стол" : "Table"}</span>
+            </button>
+            <button
+              type="button"
+              className={cn(mobilePane === "chat" && "is-active")}
+              onClick={() => {
+                setSideTab("chat");
+                setMobilePane("chat");
+              }}
+            >
+              <MessageCircle aria-hidden="true" />
+              <span>{t.chat}</span>
+            </button>
+            <button
+              type="button"
+              className={cn(mobilePane === "history" && "is-active")}
+              onClick={() => {
+                setSideTab("history");
+                setMobilePane("history");
+              }}
+            >
+              <ScrollText aria-hidden="true" />
+              <span>{lang === "ru" ? "Журнал" : "Quests"}</span>
+            </button>
+          </nav>
+        ) : null}
+
+        {state.task && !state.revealed && !presentation ? (
+          <section className="deck-panel hand-dock" aria-labelledby="deck-title">
+            <h2 id="deck-title" className="sr-only">
+              {t.chooseCardHint}
+            </h2>
+            <RoundBar
+              state={state}
+              lang={lang}
+              canManage={isHost}
+              onReveal={() => {
+                const id = identity.current;
+                if (id) void act({ type: "reveal", code: state.code, ...id });
+              }}
+              onReset={() => {
+                const id = identity.current;
+                if (id) {
+                  setPicked(null);
+                  void act({ type: "revote", code: state.code, ...id });
+                }
+              }}
+            />
+            <VoteState status={voteStatus} t={t} />
+            <Deck
+              scale={state.scale}
+              picked={picked ?? me?.vote ?? null}
+              lang={lang}
+              variants={state.deckVariants}
+              backId={state.cardBackId}
+              onPick={async (value) => {
+                const id = identity.current;
+                if (!id) return;
+                const previous = picked ?? me?.vote ?? null;
+                setPicked(value);
+                setVoteStatus("saving");
+                const ok = await act(
+                  {
+                    type: "vote",
+                    code: state.code,
+                    playerId: id.playerId,
+                    token: id.token,
+                    value,
+                  },
+                  { keepPicked: true },
+                );
+                if (ok) setVoteStatus("saved");
+                else {
+                  setPicked(previous);
+                  setVoteStatus("failed");
+                }
+              }}
+            />
+          </section>
+        ) : null}
+
+        <div className="sr-only" aria-live="polite">
+          {voteStatus === "saved" ? t.voteSaved : voteStatus === "failed" ? t.voteFailed : ""}
+        </div>
+
+        {analysis && voteShowcaseOpen ? (
+          <VoteShowcase
+            analysis={analysis}
+            backId={state.cardBackId}
             lang={lang}
-            tab={sideTab}
-            onTab={setSideTab}
-            you={you}
-            history={state.history}
-            queue={state.queue ?? []}
-            current={state.task}
-            onQueueAdd={async (title, description) => {
-              const id = identity.current;
-              return id
-                ? act({ type: "queue-task", code: state.code, ...id, title, description })
-                : false;
-            }}
-            onQueueStart={(taskId) => {
-              const id = identity.current;
-              if (id) {
-                void act({ type: "start-queued", code: state.code, ...id, taskId });
-                setMobilePane("table");
-              }
-            }}
-            onQueueRemove={(taskId) => {
-              const id = identity.current;
-              if (id) void act({ type: "remove-queued", code: state.code, ...id, taskId });
-            }}
-            isHost={isHost}
-            entries={state.chat}
-            onReestimate={(entry) => {
-              const id = identity.current;
-              if (!id || !isHost || state.task) return;
-              void act({
-                type: "set-task",
-                code: state.code,
-                playerId: id.playerId,
-                token: id.token,
-                title: entry.title,
-                description: entry.description,
-              });
-              setTaskCollapsed(true);
-              setMobilePane("table");
-            }}
-            onSay={(text) => {
-              const id = identity.current;
-              if (!id) return;
-              void act({
-                type: "chat",
-                code: state.code,
-                playerId: id.playerId,
-                token: id.token,
-                text,
-              });
-            }}
-            onNick={(targetId, x, y) => {
-              if (targetId !== you) setMenu({ x, y, targetId });
+            t={t}
+            onClose={closeVoteShowcase}
+          />
+        ) : null}
+
+        {finalReveal ? (
+          <FinalCardReveal
+            entry={finalReveal}
+            lang={lang}
+            onClose={() => {
+              if (finalRevealTimer.current) window.clearTimeout(finalRevealTimer.current);
+              finalRevealTimer.current = null;
+              setFinalReveal(null);
             }}
           />
         ) : null}
-      </main>
 
-      {!presentation ? (
-        <nav
-          className="mobile-room-nav"
-          aria-label={lang === "ru" ? "Разделы комнаты" : "Room sections"}
-        >
-          <button
-            type="button"
-            className={cn(mobilePane === "table" && "is-active")}
-            onClick={() => setMobilePane("table")}
-          >
-            <Users aria-hidden="true" />
-            <span>{lang === "ru" ? "Стол" : "Table"}</span>
-          </button>
-          <button
-            type="button"
-            className={cn(mobilePane === "chat" && "is-active")}
-            onClick={() => {
-              setSideTab("chat");
-              setMobilePane("chat");
-            }}
-          >
-            <MessageCircle aria-hidden="true" />
-            <span>{t.chat}</span>
-          </button>
-          <button
-            type="button"
-            className={cn(mobilePane === "history" && "is-active")}
-            onClick={() => {
-              setSideTab("history");
-              setMobilePane("history");
-            }}
-          >
-            <ScrollText aria-hidden="true" />
-            <span>{lang === "ru" ? "Журнал" : "Quests"}</span>
-          </button>
-        </nav>
-      ) : null}
-
-      {state.task && !state.revealed && !presentation ? (
-        <section className="deck-panel hand-dock" aria-labelledby="deck-title">
-          <h2 id="deck-title" className="sr-only">
-            {t.chooseCardHint}
-          </h2>
-          <RoundBar
-            state={state}
+        {menu ? (
+          <ContextMenu
+            x={menu.x}
+            y={menu.y}
+            label={t.snow}
             lang={lang}
-            canManage={isHost}
-            onReveal={() => {
+            isHost={isHost && menu.targetId !== you}
+            onTransfer={() => {
               const id = identity.current;
-              if (id) void act({ type: "reveal", code: state.code, ...id });
+              if (id)
+                void act({
+                  type: "transfer-host",
+                  code: state.code,
+                  ...id,
+                  targetId: menu.targetId,
+                });
+              setMenu(null);
             }}
-            onReset={() => {
+            onKick={() => {
               const id = identity.current;
-              if (id) {
-                setPicked(null);
-                void act({ type: "revote", code: state.code, ...id });
-              }
+              if (
+                id &&
+                window.confirm(
+                  lang === "ru"
+                    ? "Убрать этого игрока из комнаты?"
+                    : "Remove this player from the room?",
+                )
+              )
+                void act({ type: "kick", code: state.code, ...id, targetId: menu.targetId });
+              setMenu(null);
             }}
-          />
-          <VoteState status={voteStatus} t={t} />
-          <Deck
-            scale={state.scale}
-            picked={picked ?? me?.vote ?? null}
-            lang={lang}
-            variants={state.deckVariants}
-            backId={state.cardBackId}
-            onPick={async (value) => {
+            onSnow={() => {
               const id = identity.current;
               if (!id) return;
-              const previous = picked ?? me?.vote ?? null;
-              setPicked(value);
-              setVoteStatus("saving");
-              const ok = await act(
-                {
-                  type: "vote",
-                  code: state.code,
-                  playerId: id.playerId,
-                  token: id.token,
-                  value,
-                },
-                { keepPicked: true },
-              );
-              if (ok) setVoteStatus("saved");
-              else {
-                setPicked(previous);
-                setVoteStatus("failed");
-              }
+              void act({
+                type: "snowball",
+                code: state.code,
+                playerId: id.playerId,
+                token: id.token,
+                targetId: menu.targetId,
+              });
+              setMenu(null);
             }}
+            onClose={() => setMenu(null)}
           />
-        </section>
-      ) : null}
-
-      <div className="sr-only" aria-live="polite">
-        {voteStatus === "saved" ? t.voteSaved : voteStatus === "failed" ? t.voteFailed : ""}
+        ) : null}
       </div>
-
-      {analysis && voteShowcaseOpen ? (
-        <VoteShowcase
-          analysis={analysis}
-          backId={state.cardBackId}
-          lang={lang}
-          t={t}
-          onClose={closeVoteShowcase}
-        />
-      ) : null}
-
-      {finalReveal ? (
-        <FinalCardReveal
-          entry={finalReveal}
-          lang={lang}
-          onClose={() => {
-            if (finalRevealTimer.current) window.clearTimeout(finalRevealTimer.current);
-            finalRevealTimer.current = null;
-            setFinalReveal(null);
-          }}
-        />
-      ) : null}
-
-      {menu ? (
-        <ContextMenu
-          x={menu.x}
-          y={menu.y}
-          label={t.snow}
-          lang={lang}
-          isHost={isHost && menu.targetId !== you}
-          onTransfer={() => {
-            const id = identity.current;
-            if (id)
-              void act({ type: "transfer-host", code: state.code, ...id, targetId: menu.targetId });
-            setMenu(null);
-          }}
-          onKick={() => {
-            const id = identity.current;
-            if (
-              id &&
-              window.confirm(
-                lang === "ru"
-                  ? "Убрать этого игрока из комнаты?"
-                  : "Remove this player from the room?",
-              )
-            )
-              void act({ type: "kick", code: state.code, ...id, targetId: menu.targetId });
-            setMenu(null);
-          }}
-          onSnow={() => {
-            const id = identity.current;
-            if (!id) return;
-            void act({
-              type: "snowball",
-              code: state.code,
-              playerId: id.playerId,
-              token: id.token,
-              targetId: menu.targetId,
-            });
-            setMenu(null);
-          }}
-          onClose={() => setMenu(null)}
-        />
-      ) : null}
-    </div>
+    </DeckThemeContext.Provider>
   );
 }
 

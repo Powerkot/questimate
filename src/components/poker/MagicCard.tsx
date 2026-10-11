@@ -1,3 +1,4 @@
+import { QuestCardFace } from "./QuestCardFace";
 import { cardBackArt, cardFaceLabel, cardLore } from "@/lib/poker/cards";
 import type { Lang } from "@/lib/poker/i18n";
 import type { CardValue } from "@/lib/poker/types";
@@ -100,10 +101,7 @@ export function MagicCard({
             loading={eager || size === "deck" ? "eager" : "lazy"}
           />
         ) : value ? (
-          <span className="mc-symbol-front" aria-hidden="true">
-            <span>{valueLabel}</span>
-            <small>{sizeNames[value ?? ""]}</small>
-          </span>
+          <QuestCardFace value={valueLabel} description={sizeNames[value ?? ""]} />
         ) : (
           <span className="mc-blank">—</span>
         )}

@@ -1,3 +1,4 @@
+import type { DeckThemeId } from "./card-themes";
 export const SCALE = ["xs", "s", "m", "l", "xl", "XXL", "?", "☕"] as const;
 export type CardValue = (typeof SCALE)[number];
 
@@ -84,6 +85,7 @@ export type RoomPassword = {
 };
 
 export type StoredRoom = {
+  deckThemeId?: DeckThemeId;
   code: string;
   cardBackId: string;
   password?: RoomPassword;
@@ -115,6 +117,7 @@ export type PublicPlayer = {
 };
 
 export type Snapshot = {
+  deckThemeId: DeckThemeId;
   code: string;
   passwordProtected: boolean;
   cardBackId: string;

@@ -1,3 +1,4 @@
+import { initialDeckTheme, isDeckTheme, nextDeckTheme } from "./card-themes.ts";
 import {
   SCALE,
   type CardValue,
@@ -68,6 +69,7 @@ export function selectVariantId(
 
 export function normalizeRoom(room: StoredRoom): StoredRoom {
   room.roundId ||= room.task?.id ?? makeId("r");
+  if (!isDeckTheme(room.deckThemeId)) room.deckThemeId = initialDeckTheme(room.code);
   room.variants ||= {};
   room.completedRounds ||= [];
   room.queue ||= [];
@@ -110,6 +112,7 @@ export function snapshot(room: StoredRoom, viewerId: string): Snapshot {
   return {
     code: room.code,
     passwordProtected: Boolean(room.password),
+    deckThemeId: room.deckThemeId!,
     cardBackId: room.cardBackId,
     hostId: room.hostId,
     players: activePlayers(room).map((p) => ({
@@ -388,6 +391,7 @@ export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
       return { ok: false, error: "invalid" };
     room.queue = room.queue!.filter((t) => t.id !== task.id);
     if (action.type === "start-queued") {
+      room.deckThemeId = nextDeckTheme(room.deckThemeId!);
       room.task = { ...task, startedAt: now() };
       room.votes = {};
       room.variants = {};
@@ -403,6 +407,7 @@ export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
     const title = action.title.trim().slice(0, 140);
     const description = action.description.trim().slice(0, 4000);
     if (!title || room.task) return { ok: false, error: "invalid" };
+    room.deckThemeId = nextDeckTheme(room.deckThemeId!);
     room.task = { id: makeId("t"), title, description, startedAt: now() };
     room.votes = {};
     room.roundId = makeId("r");

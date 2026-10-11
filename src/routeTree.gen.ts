@@ -10,33 +10,53 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CardLabRouteImport } from './routes/card-lab'
+import { Route as QuestDecksRouteImport } from './routes/quest-decks'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CardLabRoute = CardLabRouteImport.update({
+  id: '/card-lab',
+  path: '/card-lab',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QuestDecksRoute = QuestDecksRouteImport.update({
+  id: '/quest-decks',
+  path: '/quest-decks',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/card-lab': typeof CardLabRoute
+  '/quest-decks': typeof QuestDecksRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/card-lab': typeof CardLabRoute
+  '/quest-decks': typeof QuestDecksRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/card-lab': typeof CardLabRoute
+  '/quest-decks': typeof QuestDecksRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/card-lab' | '/quest-decks'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/card-lab' | '/quest-decks'
+  id: '__root__' | '/' | '/card-lab' | '/quest-decks'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CardLabRoute: typeof CardLabRoute
+  QuestDecksRoute: typeof QuestDecksRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +68,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/card-lab': {
+      id: '/card-lab'
+      path: '/card-lab'
+      fullPath: '/card-lab'
+      preLoaderRoute: typeof CardLabRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/quest-decks': {
+      id: '/quest-decks'
+      path: '/quest-decks'
+      fullPath: '/quest-decks'
+      preLoaderRoute: typeof QuestDecksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CardLabRoute: CardLabRoute,
+  QuestDecksRoute: QuestDecksRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

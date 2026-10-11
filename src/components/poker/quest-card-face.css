@@ -1,0 +1,72 @@
+.quest-card-face {
+  display: block;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: inherit;
+  background: #173e43;
+}
+.quest-card-face .qcf-art {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+}
+.quest-card-face .qcf-type {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.qcf-value,
+.qcf-description {
+  fill: var(--qcf-ink);
+  paint-order: stroke fill;
+}
+.qcf-01 {
+  --qcf-ink: #18394d;
+}
+.qcf-03 {
+  --qcf-ink: #65401d;
+}
+.qcf-07 {
+  --qcf-ink: #fff2cc;
+}
+.qcf-09 {
+  --qcf-ink: #163247;
+}
+.qcf-12 {
+  --qcf-ink: #ffe1a3;
+}
+.qcf-13 {
+  --qcf-ink: #fff0cd;
+}
+.qcf-17 {
+  --qcf-ink: #332313;
+}
+.qcf-18 {
+  --qcf-ink: #102f4d;
+}
+.qcf-20 {
+  --qcf-ink: #d6fff2;
+}
+.qcf-07 .qcf-value,
+.qcf-12 .qcf-value,
+.qcf-13 .qcf-value,
+.qcf-20 .qcf-value {
+  stroke: #061f27;
+  stroke-width: 0.6px;
+}
+.mc-mini .qcf-description,
+.mc-seat .qcf-description {
+  display: none;
+}
+.mc-estimate .mc-front:has(.quest-card-face) {
+  border: 0;
+  box-shadow: 0 1px 5px #0008;
+}

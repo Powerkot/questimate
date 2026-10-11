@@ -475,3 +475,61 @@ it("deals demo votes gradually and never fills votes after a reveal", () => {
   tickDemoRoom(room);
   assert.equal(Object.keys(room.votes).length, 2);
 });
+
+describe("shared quest deck themes", () => {
+  const auth = { playerId: "host01", token: "host-token" };
+  function setup() {
+    return createRoom("THEMES", stored(auth.playerId, auth.token, Date.now()));
+  }
+  it("shares a persisted theme with every viewer and keeps it during a revote", () => {
+    const room = setup();
+    applyAction(room, { type: "set-task", ...auth, title: "Quest", description: "" });
+    const theme = snapshot(room, auth.playerId).deckThemeId;
+    assert.equal(snapshot(room, "another-viewer").deckThemeId, theme);
+    applyAction(room, { type: "reveal", ...auth });
+    applyAction(room, { type: "revote", ...auth });
+    assert.equal(snapshot(room, auth.playerId).deckThemeId, theme);
+    const restored = JSON.parse(JSON.stringify(room));
+    assert.equal(snapshot(restored, "rejoined-viewer").deckThemeId, theme);
+  });
+  it("changes on each new quest, including queued quests and after the history cap", () => {
+    const room = setup();
+    let previous = snapshot(room, auth.playerId).deckThemeId;
+    const seen = new Set<string>();
+    for (let i = 0; i < 45; i++) {
+      if (i % 2) {
+        assert.equal(
+          applyAction(room, { type: "queue-task", ...auth, title: `Quest ${i}`, description: "" })
+            .ok,
+          true,
+        );
+        assert.equal(
+          applyAction(room, { type: "start-queued", ...auth, taskId: room.queue![0].id }).ok,
+          true,
+        );
+      } else {
+        assert.equal(
+          applyAction(room, { type: "set-task", ...auth, title: `Quest ${i}`, description: "" }).ok,
+          true,
+        );
+      }
+      const theme = snapshot(room, auth.playerId).deckThemeId;
+      assert.notEqual(theme, previous);
+      if (i < 9) seen.add(theme);
+      previous = theme;
+      assert.equal(applyAction(room, { type: "reveal", ...auth }).ok, true);
+      assert.equal(applyAction(room, { type: "finalize", ...auth, result: "xl" }).ok, true);
+      assert.equal(snapshot(room, auth.playerId).deckThemeId, theme);
+    }
+    assert.equal(seen.size, 9);
+    assert.equal(room.history.length, 40);
+  });
+  it("gives old rooms a stable approved theme", () => {
+    const room = setup();
+    delete room.deckThemeId;
+    assert.equal(
+      snapshot(room, "a").deckThemeId,
+      snapshot(JSON.parse(JSON.stringify(room)), "b").deckThemeId,
+    );
+  });
+});
