@@ -761,3 +761,32 @@ it("admits observers even when every character portrait is taken", () => {
   );
   assert.equal(snapshot(room, "watch001").players.filter((p) => p.spectator).length, 1);
 });
+
+it("recovers a disconnected host without losing participants, task or ballots", () => {
+  const room = createRoom("FIXIT", stored("host01", "host-token", Date.now()));
+  applyAction(room, { type: "join", playerId: "guest01", token: "guest-token", name: "Guest" });
+  applyAction(room, { type: "set-task", playerId: "host01", token: "host-token", title: "Keep this task", description: "" });
+  applyAction(room, { type: "vote", playerId: "guest01", token: "guest-token", value: "m" });
+  const claim = { type: "claim-host" as const, playerId: "guest01", token: "guest-token" };
+  assert.equal(applyAction(room, claim).ok, false);
+  room.players[0].lastSeen = Date.now() - 121_000;
+  assert.equal(snapshot(room, "guest01").hostRecoveryAvailable, true);
+  assert.equal(applyAction(room, { ...claim, token: "wrong-token" }).ok, false);
+  assert.equal(applyAction(room, claim).ok, true);
+  assert.equal(room.hostId, "guest01");
+  assert.equal(room.votes.guest01, "m");
+  assert.equal(room.task?.title, "Keep this task");
+  assert.equal(room.players.length, 2);
+  assert.equal(applyAction(room, { type: "resume", playerId: "host01", token: "host-token" }).ok, true);
+  assert.equal(room.hostId, "guest01");
+  assert.equal(applyAction(room, { type: "claim-host", playerId: "host01", token: "host-token" }).ok, false);
+});
+
+it("a host who reconnects before recovery keeps control", () => {
+  const room = createRoom("FIXIT", stored("host01", "host-token", Date.now() - 121_000));
+  applyAction(room, { type: "join", playerId: "guest01", token: "guest-token", name: "Guest" });
+  assert.equal(snapshot(room, "guest01").hostRecoveryAvailable, true);
+  applyAction(room, { type: "resume", playerId: "host01", token: "host-token" });
+  assert.equal(snapshot(room, "guest01").hostRecoveryAvailable, false);
+  assert.equal(applyAction(room, { type: "claim-host", playerId: "guest01", token: "guest-token" }).ok, false);
+});

@@ -34,6 +34,7 @@ const actionSchema = z.discriminatedUnion("type", [
     titleId,
     spectator: z.boolean().optional(),
   }),
+  z.object({ type: z.literal("claim-host"), code, playerId: id, token }),
   z.object({ type: z.literal("resume"), code, playerId: id, token }),
   z.object({ type: z.literal("sync"), code, playerId: id, token }),
   z.object({ type: z.literal("chat"), code, playerId: id, token, text: z.string().max(400) }),
