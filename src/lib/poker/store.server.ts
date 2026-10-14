@@ -1,3 +1,4 @@
+import { validPlayerName } from "./player-name";
 import {
   availableCharacters,
   validAvatar,
@@ -84,7 +85,8 @@ export async function createPokerRoom(
   await purgeExpiredRooms();
   if ((input.avatarId !== undefined && !validAvatar(input.avatarId)) || !validTitle(input.titleId))
     return { ok: false, error: "invalid" };
-  const name = input.name.trim().slice(0, 24) || "Host";
+  const name = input.name.trim().slice(0, 24);
+  if (!validPlayerName(name)) return { ok: false, error: "name_required" };
   const player = {
     id: input.playerId || makeId("p"),
     name,

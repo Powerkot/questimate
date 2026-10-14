@@ -1,3 +1,4 @@
+import { validPlayerName } from "@/lib/poker/player-name";
 import { CharacterPicker } from "./CharacterPicker";
 import { CHARACTERS, PLAYER_TITLES, type PlayerAppearance } from "@/lib/poker/player-profile";
 import { DECK_THEMES } from "@/lib/poker/card-themes";
@@ -336,7 +337,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
     appearance: PlayerAppearance = {},
   ) => {
     const nick = name.trim();
-    if (!nick) {
+    if (!validPlayerName(nick)) {
       setError("name_required");
       return;
     }

@@ -1,3 +1,4 @@
+import { validPlayerName } from "./player-name.ts";
 import {
   CHARACTERS,
   PLAYER_TITLES,
@@ -281,14 +282,15 @@ export type ApplyResult =
       persist?: boolean;
       hit?: { targetId: string };
     }
-  | { ok: false; error: "unauthorized" | "invalid" | "avatar_taken" | "no_characters" };
+  | { ok: false; error: "unauthorized" | "invalid" | "avatar_taken" | "no_characters" | "name_required" };
 
 export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
   normalizeRoom(room);
   expireAbandonedPlayers(room);
 
   if (action.type === "join") {
-    const name = action.name.trim().slice(0, 24) || "Player";
+    const name = action.name.trim().slice(0, 24);
+    if (!validPlayerName(name)) return { ok: false, error: "name_required" };
     const existingByToken = room.players.find((p) => p.token === action.token);
     const existingById = room.players.find((p) => p.id === action.playerId);
     const existing = existingByToken ?? existingById;

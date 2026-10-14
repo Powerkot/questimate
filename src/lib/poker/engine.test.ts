@@ -790,3 +790,17 @@ it("a host who reconnects before recovery keeps control", () => {
   assert.equal(snapshot(room, "guest01").hostRecoveryAvailable, false);
   assert.equal(applyAction(room, { type: "claim-host", playerId: "guest01", token: "guest-token" }).ok, false);
 });
+
+it("rejects visually empty names without changing existing room participants", () => {
+  const room = createRoom("NAMES", stored("host01", "host-token", Date.now()));
+  room.players[0].name = "\u2800";
+  for (const name of ["", "   ", "\u2800\u2800", "\u200b\u200d", "\u3164", "\u00a0\u2060", "\u0301"]) {
+    assert.deepEqual(applyAction(room, { type: "join", playerId: "guest01", token: "guest-token", name }), { ok: false, error: "name_required" });
+    assert.equal(room.players.length, 1);
+  }
+  assert.equal(applyAction(room, { type: "resume", playerId: "host01", token: "host-token" }).ok, true);
+  assert.equal(room.players[0].name, "\u2800");
+  for (const name of ["Денис Олегович", "李明", "🦄", "Anne-Marie"]) {
+    assert.equal(applyAction(room, { type: "join", playerId: "guest01", token: "guest-token", name }).ok, true);
+  }
+});
