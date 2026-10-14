@@ -128,6 +128,7 @@ export type Snapshot = {
   passwordProtected: boolean;
   cardBackId: string;
   hostId: string;
+  hostRecoveryAvailable?: boolean;
   players: PublicPlayer[];
   task: Task | null;
   revealed: boolean;

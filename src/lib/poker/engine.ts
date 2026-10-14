@@ -22,6 +22,7 @@ import { cardBackIds, cardFaceLabel, cardVariantIds, DEFAULT_CARD_BACK_ID } from
 export const DEMO_CODE = "RAID1";
 export const DEMO_SNOW_AFTER_MS = 12_000;
 export const PRESENCE_AWAY_MS = 30_000;
+export const HOST_RECOVERY_MS = 120_000;
 const PLAYER_RETENTION_MS = 24 * 60 * 60_000;
 const HEARTBEAT_WRITE_MS = 15_000;
 const LEAVE_NOTICE_COOLDOWN_MS = 60_000;
@@ -123,6 +124,11 @@ function activePlayers(room: StoredRoom): StoredPlayer[] {
   return room.players.filter((player) => !player.leftAt);
 }
 
+export function canRecoverHost(room: StoredRoom): boolean {
+  const host = activePlayers(room).find((p) => p.id === room.hostId);
+  return !host || (!host.bot && now() - host.lastSeen >= HOST_RECOVERY_MS);
+}
+
 export function throwSnowball(room: StoredRoom, from: StoredPlayer, target: StoredPlayer): void {
   const until = now() + 10_000;
   room.snowUntil[target.id] = until;
@@ -148,6 +154,7 @@ export function snapshot(room: StoredRoom, viewerId: string): Snapshot {
     deckThemeId: room.deckThemeId!,
     cardBackId: room.cardBackId,
     hostId: room.hostId,
+    hostRecoveryAvailable: canRecoverHost(room),
     players: activePlayers(room).map((p) => ({
       id: p.id,
       name: p.name,
@@ -250,6 +257,7 @@ export type RoomAction =
       token: string;
       password?: string;
     } & PlayerAppearance)
+  | { type: "claim-host"; playerId: string; token: string }
   | { type: "resume"; playerId: string; token: string }
   | { type: "sync"; playerId: string; token: string }
   | { type: "chat"; playerId: string; token: string; text: string }
@@ -340,6 +348,17 @@ export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
   if (!auth) return { ok: false, error: "unauthorized" };
   const { player: me, heartbeatDue } = auth;
   const isHost = me.id === room.hostId;
+
+  if (action.type === "claim-host") {
+    if (isHost || !canRecoverHost(room)) return { ok: false, error: "unauthorized" };
+    room.hostId = me.id;
+    pushChat(room, {
+      id: makeId("c"), kind: "system", ts: now(),
+      text: `${me.name} стал(а) ведущим: предыдущий ведущий отключился.`,
+      textEn: `${me.name} took over as host: the previous host disconnected.`,
+    });
+    return { ok: true, room, you: me.id };
+  }
 
   if (action.type === "sync" || action.type === "resume") {
     return { ok: true, room, you: me.id, persist: heartbeatDue };

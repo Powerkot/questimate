@@ -6198,3 +6198,17 @@
 .view-table .table-scene {
   margin-bottom: 24px;
 }
+
+.host-recovery {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 18px;
+  margin: 12px 0;
+  border: 1px solid #b99451;
+  border-radius: 16px;
+  background: #281d13;
+  color: #f2d69b;
+}

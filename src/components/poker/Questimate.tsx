@@ -564,6 +564,22 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
           </div>
         ) : null}
 
+        {!isHost && state.hostRecoveryAvailable && !presentation ? (
+          <div className="host-recovery" role="status">
+            <span>{lang === "ru" ? "Ведущий не отвечает больше двух минут. Вы можете продолжить встречу." : "The host has been disconnected for over two minutes. You can continue the session."}</span>
+            <Button type="button" disabled={busy} onClick={async () => {
+              const id = identity.current;
+              if (!id) return;
+              setBusy(true);
+              try { await act({ type: "claim-host", code: state.code, ...id }); }
+              finally { setBusy(false); }
+            }}>
+              <Crown aria-hidden="true" />
+              {lang === "ru" ? "Стать ведущим" : "Become host"}
+            </Button>
+          </div>
+        ) : null}
+
         <main className="quest-layout">
           <div className="quest-stage">
             <TaskCard
