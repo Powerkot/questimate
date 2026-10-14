@@ -150,6 +150,7 @@ export type PokerErr = {
     | "wrong_password"
     | "unauthorized"
     | "invalid"
+    | "name_required"
     | "avatar_taken"
     | "no_characters";
 };

@@ -1,3 +1,4 @@
+import { validPlayerName } from "./player-name";
 import { validAvatar, validTitle } from "./player-profile";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -6,7 +7,7 @@ import type { PokerResult } from "./types";
 const id = z.string().regex(/^[a-zA-Z0-9_-]{6,48}$/);
 const token = z.string().min(8).max(64);
 const code = z.string().regex(/^[A-Z0-9]{5}$/);
-const name = z.string().max(24);
+const name = z.string().max(24).refine(validPlayerName);
 const password = z.string().min(4).max(128).optional();
 
 const avatarId = z.string().refine(validAvatar).optional();
