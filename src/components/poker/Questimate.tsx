@@ -1,3 +1,4 @@
+import { EstimateDetailChart } from "./EstimateDetailChart";
 import { validPlayerName } from "@/lib/poker/player-name";
 import { CharacterPicker } from "./CharacterPicker";
 import { CHARACTERS, PLAYER_TITLES, type PlayerAppearance } from "@/lib/poker/player-profile";
@@ -28,7 +29,7 @@ import { HandEmbers } from "@/components/poker/HandEmbers";
 import { RoundBar, VoteBars } from "@/components/poker/RoundBar";
 import { TaskJournal } from "@/components/poker/TaskJournal";
 import { FinalCardReveal } from "@/components/poker/FinalCardReveal";
-import { MagicCard, MiniFaces } from "@/components/poker/MagicCard";
+import { MagicCard } from "@/components/poker/MagicCard";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea } from "@/components/ui/input";
 import { createPokerRoomFn, pokerActionFn, type PokerActionInput } from "@/lib/poker/actions";
@@ -742,6 +743,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
 
             {state.task && state.revealed && !presentation ? (
               <HostControls
+                viewerId={you}
                 analysis={analysis}
                 onShowcase={() => setVoteShowcaseOpen(true)}
                 lang={lang}
@@ -791,6 +793,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
             ) : null}
             {analysis && presentation ? (
               <ConsensusPanel
+                viewerId={you}
                 t={t}
                 lang={lang}
                 state={state}
@@ -1919,6 +1922,7 @@ function VoteState({ status, t }: { status: VoteStatus; t: (typeof I18N)[Lang] }
 }
 
 function ConsensusPanel({
+  viewerId,
   t,
   lang,
   state,
@@ -1928,6 +1932,7 @@ function ConsensusPanel({
   onPick,
   embedded = false,
 }: {
+  viewerId: string;
   t: (typeof I18N)[Lang];
   lang: Lang;
   state: Snapshot;
@@ -1944,9 +1949,6 @@ function ConsensusPanel({
         ? t.levelMedium
         : t.levelLow;
   const outlierValues = [...new Set(analysis.outliers.map((player) => player.vote))];
-  const cardValues = state.players
-    .filter((player) => player.vote)
-    .map((player) => ({ value: player.vote as string, variantId: player.variantId }));
   const questionCount = analysis.specials.filter((player) => player.vote === "?").length;
   const coffeeCount = analysis.specials.filter((player) => player.vote === "☕").length;
   let insight = t.allAgree;
@@ -1995,29 +1997,12 @@ function ConsensusPanel({
       <p className="distribution-insight">{insight}</p>
       <details className="distribution-details">
         <summary>{lang === "ru" ? "Подробнее об оценках" : "Estimate details"}</summary>
-        <MiniFaces values={cardValues} lang={lang} />
-        <dl className="consensus-stats">
-          <div>
-            <dt>{t.median}</dt>
-            <dd>{cardFaceLabel(analysis.median)}</dd>
-          </div>
-          <div>
-            <dt>{t.mode}</dt>
-            <dd>{cardFaceLabel(analysis.mode)}</dd>
-          </div>
-          <div>
-            <dt>{t.range}</dt>
-            <dd>{cardFaceLabel(analysis.range)}</dd>
-          </div>
-          <div>
-            <dt>{t.outliers}</dt>
-            <dd>
-              {outlierValues.length
-                ? outlierValues.map((value) => cardFaceLabel(value)).join(", ")
-                : t.none}
-            </dd>
-          </div>
-        </dl>
+        <EstimateDetailChart players={state.players} viewerId={viewerId} lang={lang} />
+        <div className="estimate-detail-summary">
+          <span>{t.median}: <b>{cardFaceLabel(analysis.median)}</b></span>
+          <span>{t.mode}: <b>{cardFaceLabel(analysis.mode)}</b></span>
+          <span>{t.outliers}: <b>{outlierValues.length ? outlierValues.map((value) => cardFaceLabel(value)).join(", ") : t.none}</b></span>
+        </div>
         {questionCount || coffeeCount ? (
           <div className="special-signals">
             <strong>{t.specialVotes}</strong>
@@ -2045,6 +2030,7 @@ function ConsensusPanel({
 }
 
 function HostControls({
+  viewerId,
   t,
   analysis,
   onShowcase,
@@ -2059,6 +2045,7 @@ function HostControls({
   onRevote,
   onFinalize,
 }: {
+  viewerId: string;
   t: (typeof I18N)[Lang];
   analysis: ReturnType<typeof analyzeVotes>;
   onShowcase: () => void;
@@ -2088,6 +2075,7 @@ function HostControls({
       >
         {analysis && (
           <ConsensusPanel
+            viewerId={viewerId}
             t={t}
             lang={lang}
             state={state}
