@@ -68,6 +68,9 @@ export type Task = {
 };
 
 export type StoredPlayer = {
+  spectator?: boolean;
+  avatarId?: string;
+  titleId?: string | null;
   id: string;
   name: string;
   token: string;
@@ -106,6 +109,9 @@ export type StoredRoom = {
 };
 
 export type PublicPlayer = {
+  spectator: boolean;
+  avatarId: string;
+  titleId: string | null;
   id: string;
   name: string;
   isHost: boolean;
@@ -137,6 +143,13 @@ export type Snapshot = {
 export type PokerOk = { ok: true; you: string; state: Snapshot };
 export type PokerErr = {
   ok: false;
-  error: "room_not_found" | "password_required" | "wrong_password" | "unauthorized" | "invalid";
+  error:
+    | "room_not_found"
+    | "password_required"
+    | "wrong_password"
+    | "unauthorized"
+    | "invalid"
+    | "avatar_taken"
+    | "no_characters";
 };
 export type PokerResult = PokerOk | PokerErr;

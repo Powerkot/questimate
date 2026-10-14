@@ -1,3 +1,9 @@
+import {
+  availableCharacters,
+  validAvatar,
+  validTitle,
+  type PlayerAppearance,
+} from "./player-profile";
 import { getSql } from "@/lib/db";
 import {
   DEMO_CODE,
@@ -67,17 +73,24 @@ async function purgeExpiredRooms(): Promise<void> {
   await sql.query(`delete from poker_rooms where created_at <= now() - interval '24 hours'`);
 }
 
-export async function createPokerRoom(input: {
-  name: string;
-  playerId: string;
-  token: string;
-  password?: string;
-}): Promise<PokerResult> {
+export async function createPokerRoom(
+  input: PlayerAppearance & {
+    name: string;
+    playerId: string;
+    token: string;
+    password?: string;
+  },
+): Promise<PokerResult> {
   await purgeExpiredRooms();
+  if ((input.avatarId !== undefined && !validAvatar(input.avatarId)) || !validTitle(input.titleId))
+    return { ok: false, error: "invalid" };
   const name = input.name.trim().slice(0, 24) || "Host";
   const player = {
     id: input.playerId || makeId("p"),
     name,
+    avatarId: input.spectator ? undefined : input.avatarId,
+    spectator: Boolean(input.spectator),
+    titleId: input.spectator ? null : (input.titleId ?? null),
     token: input.token,
     lastSeen: now(),
     joinedAt: now(),
@@ -128,4 +141,23 @@ export async function handlePokerAction(
     return { ok: true, you: result.you, state: snapshot(result.room, result.you) };
   }
   return { ok: false, error: "invalid" };
+}
+
+// Before joining, expose only free character IDs, never names, votes, or tokens.
+export async function getPokerCharacters(input: {
+  code: string;
+  playerId: string;
+  token: string;
+  password?: string;
+}): Promise<{ ok: true; available: string[] } | { ok: false; error: string }> {
+  const loaded = await load(input.code);
+  if (!loaded) return { ok: false, error: "room_not_found" };
+  const { room } = loaded;
+  if (room.password) {
+    if (!input.password) return { ok: false, error: "password_required" };
+    if (!(await verifyRoomPassword(input.password, room.password)))
+      return { ok: false, error: "wrong_password" };
+  }
+  const own = room.players.find((p) => p.id === input.playerId && p.token === input.token);
+  return { ok: true, available: availableCharacters(room.players, own?.id) };
 }

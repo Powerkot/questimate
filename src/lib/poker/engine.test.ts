@@ -1,3 +1,4 @@
+import { CHARACTERS } from "./player-profile.ts";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { cardBackIds, cardVariantIds, estimateCardArt } from "./cards.ts";
@@ -489,7 +490,7 @@ describe("shared quest deck themes", () => {
     applyAction(room, { type: "reveal", ...auth });
     applyAction(room, { type: "revote", ...auth });
     assert.equal(snapshot(room, auth.playerId).deckThemeId, theme);
-    const restored = JSON.parse(JSON.stringify(room));
+    const restored: typeof room = JSON.parse(JSON.stringify(room));
     assert.equal(snapshot(restored, "rejoined-viewer").deckThemeId, theme);
   });
   it("changes on each new quest, including queued quests and after the history cap", () => {
@@ -532,4 +533,231 @@ describe("shared quest deck themes", () => {
       snapshot(JSON.parse(JSON.stringify(room)), "b").deckThemeId,
     );
   });
+});
+
+describe("player character and optional title", () => {
+  const host = { playerId: "host01", token: "host-token" };
+  const guest = { playerId: "guest01", token: "guest-token" };
+  it("rejects another player's character and preserves the original choice", () => {
+    const room = createRoom("AVATR", {
+      ...stored(host.playerId, host.token, Date.now()),
+      avatarId: "portrait-01",
+      titleId: "backlog",
+    });
+    const result = applyAction(room, {
+      type: "join",
+      ...guest,
+      name: "Guest",
+      avatarId: "portrait-01",
+      titleId: null,
+    });
+    assert.deepEqual(result, { ok: false, error: "avatar_taken" });
+    assert.equal(room.players.length, 1);
+    assert.equal(snapshot(room, host.playerId).players[0].titleId, "backlog");
+  });
+  it("keeps a chosen character and no-title preference across reconnect and host transfer", () => {
+    const room = createRoom("AVATR", stored(host.playerId, host.token, Date.now()));
+    const character = "portrait-12";
+    // The host's automatically assigned legacy avatar can be this character.
+    room.players[0].avatarId = "portrait-01";
+    assert.equal(
+      applyAction(room, {
+        type: "join",
+        ...guest,
+        name: "Guest",
+        avatarId: character,
+        titleId: null,
+      }).ok,
+      true,
+    );
+    assert.equal(
+      applyAction(room, { type: "transfer-host", ...host, targetId: guest.playerId }).ok,
+      true,
+    );
+    const restored: typeof room = JSON.parse(JSON.stringify(room));
+    assert.equal(applyAction(restored, { type: "resume", ...guest }).ok, true);
+    const player = snapshot(restored, guest.playerId).players.find((p) => p.id === guest.playerId)!;
+    assert.equal(player.avatarId, character);
+    assert.equal(player.titleId, null);
+    assert.equal(player.isHost, true);
+    assert.equal(applyAction(restored, { type: "join", ...guest, name: "Guest" }).ok, true);
+    assert.equal(restored.players.find((p) => p.id === guest.playerId)!.avatarId, character);
+  });
+  it("reserves away characters and validates arbitrary submitted choices", () => {
+    const room = createRoom("AVATR", {
+      ...stored(host.playerId, host.token, Date.now()),
+      avatarId: "portrait-01",
+    });
+    room.players[0].lastSeen -= 120_000;
+    assert.equal(
+      applyAction(room, { type: "join", ...guest, name: "Guest", avatarId: "portrait-01" }).ok,
+      false,
+    );
+    assert.equal(
+      applyAction(room, { type: "join", ...guest, name: "Guest", avatarId: "invented" }).ok,
+      false,
+    );
+    assert.equal(
+      applyAction(room, { type: "join", ...guest, name: "Guest", titleId: "invented" }).ok,
+      false,
+    );
+  });
+  it("assigns unique stable characters to existing rooms", () => {
+    const room = buildDemoRoom();
+    const first = snapshot(room, "viewer").players.map((p) => p.avatarId);
+    assert.equal(new Set(first).size, first.length);
+    assert.deepEqual(
+      snapshot(JSON.parse(JSON.stringify(room)), "viewer").players.map((p) => p.avatarId),
+      first,
+    );
+  });
+});
+
+it("releases a character after an explicit leave without changing a present player's choice", () => {
+  const host = { playerId: "host01", token: "host-token" };
+  const guest = { playerId: "guest01", token: "guest-token" };
+  const room = createRoom("AVATR", {
+    ...stored(host.playerId, host.token, Date.now()),
+    avatarId: "portrait-01",
+  });
+  applyAction(room, {
+    type: "join",
+    ...guest,
+    name: "Guest",
+    avatarId: "portrait-12",
+    titleId: null,
+  });
+  applyAction(room, { type: "leave", ...guest });
+  assert.equal(
+    applyAction(room, {
+      type: "join",
+      playerId: "guest02",
+      token: "guest-token-02",
+      name: "New guest",
+      avatarId: "portrait-12",
+    }).ok,
+    true,
+  );
+  assert.equal(
+    snapshot(room, host.playerId).players.find((p) => p.id === "guest02")!.avatarId,
+    "portrait-12",
+  );
+  assert.equal(room.players[0].avatarId, "portrait-01");
+});
+
+describe("observers do not occupy player seats or ballots", () => {
+  const host = { playerId: "host01", token: "host-token" };
+  it("supports six voters and seventy observers with exactly six ballots", () => {
+    const room = createRoom("WATCH", {
+      ...stored(host.playerId, host.token, Date.now()),
+      avatarId: "portrait-01",
+      titleId: null,
+    });
+    for (let i = 2; i <= 6; i++) {
+      assert.equal(
+        applyAction(room, {
+          type: "join",
+          playerId: `voter0${i}`,
+          token: `voter-token-${i}`,
+          name: `Voter ${i}`,
+          avatarId: `portrait-0${i}`,
+        }).ok,
+        true,
+      );
+    }
+    applyAction(room, { type: "set-task", ...host, title: "Quest", description: "" });
+    for (const player of room.players)
+      assert.equal(
+        applyAction(room, { type: "vote", playerId: player.id, token: player.token, value: "s" })
+          .ok,
+        true,
+      );
+    for (let i = 0; i < 70; i++)
+      assert.equal(
+        applyAction(room, {
+          type: "join",
+          playerId: `watch${String(i).padStart(3, "0")}`,
+          token: `watch-token-${i}`,
+          name: `Observer ${i}`,
+          spectator: true,
+        }).ok,
+        true,
+      );
+    const viewer = { playerId: "watch000", token: "watch-token-0" };
+    assert.deepEqual(applyAction(room, { type: "vote", ...viewer, value: "XXL" }), {
+      ok: false,
+      error: "unauthorized",
+    });
+    assert.equal(applyAction(room, { type: "chat", ...viewer, text: "Watching!" }).ok, true);
+    const hidden = snapshot(room, viewer.playerId);
+    assert.equal(hidden.players.filter((p) => !p.spectator).length, 6);
+    assert.equal(hidden.players.filter((p) => p.spectator).length, 70);
+    assert.equal(hidden.players.filter((p) => p.spectator && p.avatarId).length, 0);
+    assert.equal(hidden.votesCount, 6);
+    assert.equal(hidden.players.filter((p) => p.vote).length, 0);
+    // A stale or injected observer ballot must never enter counts or results.
+    room.votes[viewer.playerId] = "XXL";
+    applyAction(room, { type: "reveal", ...host });
+    const revealed = snapshot(room, viewer.playerId);
+    assert.equal(revealed.votesCount, 6);
+    assert.equal(revealed.players.filter((p) => p.vote === "s").length, 6);
+    assert.equal(revealed.players.find((p) => p.id === viewer.playerId)!.vote, null);
+    applyAction(room, { type: "finalize", ...host, result: "s" });
+    assert.equal(room.history[0].votes.length, 6);
+    assert.equal(new Set(room.players.filter((p) => !p.spectator).map((p) => p.avatarId)).size, 6);
+  });
+  it("removes a ballot and releases the portrait when a participant rejoins as observer", () => {
+    const room = createRoom("WATCH", {
+      ...stored(host.playerId, host.token, Date.now()),
+      avatarId: "portrait-01",
+    });
+    applyAction(room, { type: "set-task", ...host, title: "Quest", description: "" });
+    applyAction(room, { type: "vote", ...host, value: "xl" });
+    assert.equal(
+      applyAction(room, { type: "join", ...host, name: "Host", spectator: true }).ok,
+      true,
+    );
+    assert.equal(snapshot(room, host.playerId).votesCount, 0);
+    assert.equal(room.players[0].avatarId, undefined);
+    assert.equal(room.players[0].spectator, true);
+    assert.equal(
+      applyAction(room, {
+        type: "join",
+        playerId: "voter02",
+        token: "voter-token-02",
+        name: "Voter",
+        avatarId: "portrait-01",
+      }).ok,
+      true,
+    );
+  });
+});
+
+it("admits observers even when every character portrait is taken", () => {
+  const room = createRoom("WATCH", {
+    ...stored("host01", "host-token", Date.now()),
+    avatarId: "portrait-01",
+  });
+  for (let i = 2; i <= CHARACTERS.length; i++)
+    assert.equal(
+      applyAction(room, {
+        type: "join",
+        playerId: `voter${String(i).padStart(3, "0")}`,
+        token: `voter-token-${i}`,
+        name: `Voter ${i}`,
+        avatarId: `portrait-${String(i).padStart(2, "0")}`,
+      }).ok,
+      true,
+    );
+  assert.equal(
+    applyAction(room, {
+      type: "join",
+      playerId: "watch001",
+      token: "watch-token-001",
+      name: "Observer",
+      spectator: true,
+    }).ok,
+    true,
+  );
+  assert.equal(snapshot(room, "watch001").players.filter((p) => p.spectator).length, 1);
 });

@@ -1,3 +1,5 @@
+import { CharacterPicker } from "./CharacterPicker";
+import { CHARACTERS, PLAYER_TITLES, type PlayerAppearance } from "@/lib/poker/player-profile";
 import { DECK_THEMES } from "@/lib/poker/card-themes";
 import { DeckThemeContext } from "./DeckThemeContext";
 import {
@@ -328,7 +330,11 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
     saveLang(next);
   };
 
-  const enter = async (mode: "create" | "join", forcedCode?: string) => {
+  const enter = async (
+    mode: "create" | "join",
+    forcedCode?: string,
+    appearance: PlayerAppearance = {},
+  ) => {
     const nick = name.trim();
     if (!nick) {
       setError("name_required");
@@ -348,7 +354,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
     try {
       if (mode === "create") {
         const res = await createPokerRoomFn({
-          data: { name: nick, playerId: id.playerId, token: id.token, password },
+          data: { name: nick, playerId: id.playerId, token: id.token, password, ...appearance },
         });
         if (applyResult(res)) setCreatePassword("");
       } else {
@@ -362,6 +368,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
           type: "join",
           code,
           name: nick,
+          ...appearance,
           playerId: id.playerId,
           token: id.token,
           password,
@@ -438,30 +445,30 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
         onCreatePassword={setCreatePassword}
         onJoinPassword={setJoinPassword}
         onClearError={() => setError(null)}
-        onCreate={() => void enter("create")}
-        onJoin={() => void enter("join")}
-        onDemo={() => void enter("join", DEMO_CODE)}
+        onCreate={(appearance) => void enter("create", undefined, appearance)}
+        onJoin={(appearance) => void enter("join", undefined, appearance)}
+        onDemo={(appearance) => void enter("join", DEMO_CODE, appearance)}
         onLang={toggleLang}
       />
     );
   }
 
-  const votedCount = state.players.filter((player) => player.voted).length;
-  const allVoted = state.players.length > 0 && votedCount === state.players.length;
-  const tableEnabled = canUseTable(state.players.length);
+  const voters = state.players.filter((player) => !player.spectator);
+  const spectators = state.players.filter((player) => player.spectator);
+  const votedCount = voters.filter((player) => player.voted).length;
+  const allVoted = voters.length > 0 && votedCount === voters.length;
+  const tableEnabled = canUseTable(voters.length);
   const visualMode: RoomViewMode = roomView === "table" && tableEnabled ? "table" : "cards";
   const playersById = new Map(state.players.map((player) => [player.id, player]));
   const tablePlayers = tableSeatAssignments(
-    state.players.map((player) => player.id),
+    voters.map((player) => player.id),
     you,
   ).flatMap(({ playerId, slot }) => {
     const player = playersById.get(playerId);
     return player ? [{ player, slot }] : [];
   });
   const visiblePlayers =
-    visualMode === "table"
-      ? tablePlayers
-      : state.players.map((player) => ({ player, slot: undefined }));
+    visualMode === "table" ? tablePlayers : voters.map((player) => ({ player, slot: undefined }));
 
   const chooseRoomView = (mode: RoomViewMode) => {
     setRoomView(mode);
@@ -476,7 +483,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
           `lang-${lang}`,
           presentation && "is-presenting",
           !presentation && `mobile-pane-${mobilePane}`,
-          state.task && !state.revealed && !presentation && "has-hand",
+          state.task && !state.revealed && !presentation && !me?.spectator && "has-hand",
         )}
       >
         <header className="quest-header">
@@ -602,12 +609,12 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
                   </span>
                   <div className="party-summary-row">
                     <h2 id="party-title">
-                      {allVoted ? t.allVoted : t.votesOf(votedCount, state.players.length)}
+                      {allVoted ? t.allVoted : t.votesOf(votedCount, voters.length)}
                     </h2>
                     <div className="vote-progress" aria-hidden="true">
                       <span
                         style={{
-                          width: `${state.players.length ? (votedCount / state.players.length) * 100 : 0}%`,
+                          width: `${voters.length ? (votedCount / voters.length) * 100 : 0}%`,
                         }}
                       />
                     </div>
@@ -654,7 +661,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
                 ) : null}
                 <div
                   className={cn("seat-grid", state.revealed && "is-revealed")}
-                  data-seat-count={state.players.length}
+                  data-seat-count={voters.length}
                 >
                   {visiblePlayers.map(({ player, slot }) => (
                     <Seat
@@ -674,7 +681,47 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
                   ))}
                 </div>
               </div>
+              {spectators.length > 0 && (
+                <section
+                  className="spectator-list"
+                  aria-label={lang === "ru" ? "Наблюдатели" : "Observers"}
+                >
+                  <h3>
+                    {lang === "ru" ? "Наблюдатели" : "Observers"} · {spectators.length}
+                  </h3>
+                  <p>
+                    {spectators
+                      .map(
+                        (player) =>
+                          `${player.name}${player.id === you ? (lang === "ru" ? " (вы)" : " (you)") : ""}`,
+                      )
+                      .join(", ")}
+                  </p>
+                </section>
+              )}
             </section>
+            {me?.spectator && !presentation && (
+              <p className="observer-hint">
+                {lang === "ru"
+                  ? "Вы наблюдаете за игрой. Место за столом и голос не требуются."
+                  : "You are watching. You do not take a seat or cast a vote."}
+              </p>
+            )}
+            {me?.spectator && state.task && !state.revealed && !presentation && (
+              <RoundBar
+                state={state}
+                lang={lang}
+                canManage={isHost}
+                onReveal={() => {
+                  const id = identity.current;
+                  if (id) void act({ type: "reveal", code: state.code, ...id });
+                }}
+                onReset={() => {
+                  const id = identity.current;
+                  if (id) void act({ type: "revote", code: state.code, ...id });
+                }}
+              />
+            )}
 
             {state.task && state.revealed && !presentation ? (
               <HostControls
@@ -835,7 +882,7 @@ export function Questimate({ roomCode, onRoomCode }: Props) {
           </nav>
         ) : null}
 
-        {state.task && !state.revealed && !presentation ? (
+        {state.task && !state.revealed && !presentation && !me?.spectator ? (
           <section className="deck-panel hand-dock" aria-labelledby="deck-title">
             <h2 id="deck-title" className="sr-only">
               {t.chooseCardHint}
@@ -1114,6 +1161,12 @@ function ShowcaseCard({
 }
 
 function errorText(error: string, t: (typeof I18N)[Lang]): string {
+  if (error === "avatar_taken")
+    return t === I18N.ru
+      ? "Этого персонажа уже выбрали. Выберите свободного."
+      : "This character was just taken. Choose another.";
+  if (error === "no_characters")
+    return t === I18N.ru ? "Все персонажи заняты." : "All characters are taken.";
   if (error === "name_required") return t.nameRequired;
   if (error === "invalid_code") return t.invalidRoom;
   if (error === "room_not_found") return t.roomMissing;
@@ -1157,11 +1210,15 @@ function Lobby({
   onCreatePassword: (value: string) => void;
   onJoinPassword: (value: string) => void;
   onClearError: () => void;
-  onCreate: () => void;
-  onJoin: () => void;
-  onDemo: () => void;
+  onCreate: (appearance: PlayerAppearance) => void;
+  onJoin: (appearance: PlayerAppearance) => void;
+  onDemo: (appearance: PlayerAppearance) => void;
   onLang: () => void;
 }) {
+  const [avatarId, setAvatarId] = useState(CHARACTERS[0].id);
+  const [titleId, setTitleId] = useState<string | null>(null);
+  const [spectator, setSpectator] = useState(false);
+  const [profileReady, setProfileReady] = useState(false);
   // Lobby mounts after session restoration on the client; keep one draw per visit.
   const [lobbyDeckTheme] = useState(
     () => DECK_THEMES[Math.floor(Math.random() * DECK_THEMES.length)],
@@ -1331,9 +1388,13 @@ function Lobby({
                 className="lobby-form"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  if (panel === "create") onCreate();
-                  else if (panel === "join") onJoin();
-                  else onDemo();
+                  if (!spectator && !profileReady) return;
+                  const appearance = spectator
+                    ? { spectator: true, titleId: null }
+                    : { avatarId, titleId, spectator: false };
+                  if (panel === "create") onCreate(appearance);
+                  else if (panel === "join") onJoin(appearance);
+                  else onDemo(appearance);
                 }}
               >
                 <span className="eyebrow">
@@ -1428,13 +1489,63 @@ function Lobby({
                   </>
                 ) : null}
 
+                <label className="spectator-toggle">
+                  <input
+                    type="checkbox"
+                    checked={spectator}
+                    onChange={(event) => setSpectator(event.target.checked)}
+                  />
+                  <span>
+                    <strong>{isRu ? "Только наблюдать" : "Watch only"}</strong>
+                    <small>
+                      {isRu
+                        ? "Я не буду голосовать и занимать место за столом"
+                        : "I will not vote or take a seat at the table"}
+                    </small>
+                  </span>
+                </label>
+                {!spectator && (
+                  <>
+                    <CharacterPicker
+                      code={
+                        panel === "create" ? undefined : panel === "demo" ? DEMO_CODE : codeInput
+                      }
+                      password={panel === "join" ? joinPassword : undefined}
+                      value={avatarId}
+                      onChange={setAvatarId}
+                      onReady={setProfileReady}
+                      lang={lang}
+                      refreshKey={error}
+                    />
+                    <label className="field-label" htmlFor="player-title">
+                      {isRu ? "Ваша роль:" : "Your role:"}
+                    </label>
+                    <select
+                      id="player-title"
+                      className="player-title-select"
+                      value={titleId ?? ""}
+                      onChange={(event) => setTitleId(event.target.value || null)}
+                    >
+                      <option value="">{isRu ? "Без роли" : "No role"}</option>
+                      {PLAYER_TITLES.map((title) => (
+                        <option key={title.id} value={title.id}>
+                          {title[lang]}
+                        </option>
+                      ))}
+                    </select>
+                  </>
+                )}
                 {panel === "demo" ? <p className="form-hint">{t.demoText}</p> : null}
                 {error ? (
                   <div className="lobby-error" role="alert">
                     {errorText(error, t)}
                   </div>
                 ) : null}
-                <Button type="submit" className="w-full" disabled={busy}>
+                <Button
+                  type="submit"
+                  className="w-full"
+                  disabled={busy || (!spectator && !profileReady)}
+                >
                   {busy
                     ? t.connecting
                     : panel === "create"
@@ -1638,44 +1749,9 @@ function Seat({
   onNameClick: (x: number, y: number) => void;
 }) {
   const snow = player.snowUntil > now;
-  const titles =
-    lang === "ru"
-      ? [
-          "Укротитель багов",
-          "Оракул оценок",
-          "Рыцарь деплоя",
-          "Маг рефакторинга",
-          "Хранитель бэклога",
-          "Повелитель дедлайнов",
-        ]
-      : [
-          "Bug Tamer",
-          "Oracle of Estimates",
-          "Knight of Deploys",
-          "Refactoring Mage",
-          "Backlog Keeper",
-          "Lord of Deadlines",
-        ];
-  const titleSeed = Array.from(player.id).reduce(
-    (hash, char) => (hash * 31 + char.charCodeAt(0)) >>> 0,
-    0,
-  );
-  const playerTitle = player.isHost
-    ? lang === "ru"
-      ? "Хранитель стола"
-      : "Keeper of the Table"
-    : titles[titleSeed % titles.length];
-  const portraits = [
-    "xs-knopysh-shmyg",
-    "s-yunga-shmyg",
-    "m-master-bez-khlopot",
-    "unknown-orakul-tumannnik",
-    "l-ser-dobrotyazh",
-    "xl-arkhimag-neprostoi",
-    "coffee-traktirshchik-bodrin",
-    "m-sledopyt-vernyak",
-  ];
-  const portrait = portraits[titleSeed % portraits.length];
+  const playerTitle = PLAYER_TITLES.find((title) => title.id === player.titleId)?.[lang];
+  const portrait =
+    CHARACTERS.find((character) => character.id === player.avatarId) ?? CHARACTERS[0];
   const thinking = task && !revealed && player.online && !player.voted;
   const displayName = `${player.name}${isYou ? (lang === "ru" ? " · вы" : " · you") : ""}${snow ? " ☃" : ""}`;
   let face: "back" | "front" | "empty" = "empty";
@@ -1702,7 +1778,11 @@ function Seat({
         >
           <span
             className="player-portrait"
-            style={{ backgroundImage: `url(/cards/v2/${portrait}.jpg)` }}
+            style={{
+              backgroundImage: `url(${portrait.art})`,
+              backgroundPosition: portrait.position,
+              backgroundSize: "cover",
+            }}
           />
           {thinking && (
             <span className="thinking-dots">
@@ -1732,12 +1812,14 @@ function Seat({
               {snow ? " ☃" : ""}
             </span>
           </button>
-          <span className="player-title" title={playerTitle}>
-            {playerTitle}
-          </span>
-          <span className="player-status">
-            {!player.online ? t.away : player.voted ? t.voted : t.waiting}
-          </span>
+          {playerTitle && (
+            <span className="player-title" title={playerTitle} aria-label={playerTitle}>
+              {playerTitle.split(" ")[0]}
+              <br />
+              {playerTitle.split(" ").slice(1).join(" ")}
+            </span>
+          )}
+          {!player.online && <span className="player-status">{t.away}</span>}
         </div>
       </div>
       <div className={cn("table-card-stage", player.voted && "has-card")}>
@@ -1879,13 +1961,9 @@ function ConsensusPanel({
         selected={selected}
         onPick={onPick}
       />
-      {onPick && (
+      {onPick && selected && (
         <p className="estimate-selection" aria-live="polite">
-          {selected
-            ? `${lang === "ru" ? "Итоговая оценка" : "Final estimate"}: ${cardFaceLabel(selected)}`
-            : lang === "ru"
-              ? "Нажмите на столбец, чтобы выбрать итоговую оценку"
-              : "Select a bar to choose the final estimate"}
+          {lang === "ru" ? "Итоговая оценка" : "Final estimate"}: {cardFaceLabel(selected)}
         </p>
       )}
       {analysis.level === "low" && (

@@ -5920,3 +5920,262 @@
     font-size: 11px;
   }
 }
+
+/* Join a unique character; optional titles are chosen by the player. */
+.character-picker {
+  border: 0;
+  padding: 0;
+  margin: 8px 0;
+  min-width: 0;
+}
+.character-options {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 5px;
+  scrollbar-color: #b99451 #20180f;
+}
+.character-options button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 3px;
+  border: 1px solid #b9945144;
+  border-radius: 12px;
+  background: #21170e;
+  color: #e9d6ad;
+  font-size: 10px;
+  line-height: 1.2;
+  cursor: pointer;
+}
+.character-options button img {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  object-position: center 25%;
+  border-radius: 50%;
+  border: 1px solid #caa258;
+}
+.character-options button span {
+  min-height: 24px;
+}
+.character-options button[aria-pressed="true"] {
+  border-color: #ffe3a0;
+  background: #604322;
+  box-shadow: 0 0 0 1px #d2b267;
+}
+.character-options button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  filter: grayscale(1);
+}
+.character-options button:focus-visible {
+  outline: 2px solid #ffdc8f;
+  outline-offset: 2px;
+}
+.player-title-select {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid #b9945166;
+  border-radius: 10px;
+  background: #21170e;
+  color: #f2dfb5;
+  font: inherit;
+}
+.round-status-copy .round-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  white-space: normal;
+  overflow: visible;
+}
+.round-step {
+  display: inline-block;
+  flex-shrink: 0;
+  font: 600 12px/1.2 var(--font-body);
+  white-space: nowrap;
+  color: #d3ab65;
+  border: 1px solid #bb8e4355;
+  padding: 7px 9px;
+  border-radius: 8px;
+}
+.round-prompt-pulse {
+  display: inline-block;
+  color: #ffe2a0;
+  animation: round-prompt-pulse 2s ease-in-out infinite;
+}
+@keyframes round-prompt-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    text-shadow: 0 0 10px #ffbd5566;
+  }
+  50% {
+    opacity: 0.65;
+    text-shadow: 0 0 1px #ffbd5500;
+  }
+}
+@media (max-width: 480px) {
+  .character-options {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .round-status-copy .round-heading {
+    gap: 7px;
+  }
+  .round-step {
+    font-size: 10px;
+    padding: 5px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .round-prompt-pulse {
+    animation: none;
+  }
+}
+.round-bar.is-open .round-status-copy {
+  flex-basis: 100%;
+}
+.round-bar.is-open .round-actions {
+  margin-left: auto;
+}
+@media (max-width: 759px) {
+  .hand-dock .round-status-copy {
+    flex-basis: 100%;
+  }
+  .hand-dock .round-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+@media (max-width: 759px) {
+  .estimate-bars,
+  .estimate-bars.is-picker {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+/* Player roles get two readable lines instead of a redundant ballot status. */
+.view-table .player-meta,
+.view-cards .player-meta {
+  width: 100%;
+}
+.view-table .player-meta > .player-title,
+.view-cards .player-meta > .player-title {
+  color: #ead3a1;
+  font-size: 13px;
+  line-height: 1.25;
+  white-space: normal;
+  text-overflow: clip;
+  overflow: visible;
+  letter-spacing: normal;
+  text-shadow: 0 1px 2px #000;
+}
+@media (max-width: 759px) {
+  .view-table .player-meta > .player-title {
+    font-size: 11px;
+  }
+}
+
+/* Portrait choices are circles only: no card art, nameplates, or rectangular tiles. */
+.character-options {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  justify-items: center;
+  gap: 16px;
+  padding: 10px;
+  max-height: none;
+  overflow: visible;
+}
+.character-options button {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  box-shadow: none;
+  outline-offset: 4px;
+}
+.character-options button .character-face {
+  position: absolute;
+  inset: 0;
+  display: block;
+  min-height: 0;
+  border-radius: 50%;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+.character-options button[aria-pressed="true"] {
+  border: 0;
+  background: none;
+  box-shadow: none;
+  outline: 3px solid #edce86;
+}
+.character-options button:disabled {
+  opacity: 0.3;
+}
+.spectator-toggle {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  margin-block: 12px;
+  border: 1px solid #c6a26166;
+  border-radius: 14px;
+  background: #41311d55;
+  cursor: pointer;
+}
+.spectator-toggle input {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  accent-color: #dfb75d;
+}
+.spectator-toggle strong {
+  display: block;
+  font-size: 16px;
+  color: #f5deb2;
+}
+.spectator-toggle small {
+  display: block;
+  margin-top: 5px;
+  line-height: 1.45;
+  color: #c7b48f;
+}
+.spectator-toggle:has(input:checked) {
+  border-color: #e0be77;
+  background: #72512855;
+}
+.spectator-list {
+  padding: 14px 20px;
+  border-top: 1px solid #b98e4144;
+}
+.spectator-list h3 {
+  margin: 0 0 7px;
+  color: #e5cb92;
+  font-size: 14px;
+}
+.spectator-list p {
+  margin: 0;
+  color: #c8baa0;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.observer-hint {
+  color: #d9c396;
+  margin: 14px 4px;
+  line-height: 1.6;
+}
+@media (max-width: 480px) {
+  .character-options button {
+    width: 56px;
+    height: 56px;
+  }
+}
+/* Keep the bottom seat's two-line role clear of the observer list and panel edge. */
+.view-table .table-scene {
+  margin-bottom: 24px;
+}
