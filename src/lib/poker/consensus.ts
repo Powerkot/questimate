@@ -38,7 +38,9 @@ function mostCommon(values: CardValue[]): CardValue {
 
 export function analyzeVotes(players: PublicPlayer[], revealed: boolean): Consensus | null {
   if (!revealed) return null;
-  const ballots = players.filter((p): p is PublicPlayer & { vote: CardValue } => Boolean(p.vote));
+  const ballots = players.filter(
+    (p): p is PublicPlayer & { vote: CardValue } => !p.spectator && Boolean(p.vote),
+  );
   if (!ballots.length) return null;
 
   const sized = ballots

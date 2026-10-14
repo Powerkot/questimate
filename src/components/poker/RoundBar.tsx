@@ -19,7 +19,8 @@ export function VoteBars({
   selected?: CardValue | null;
   onPick?: (value: CardValue) => void;
 }) {
-  const voters = scale.map((value) => players.filter((p) => p.vote === value));
+  const sizes = scale.filter((value) => value !== "?" && value !== "☕");
+  const voters = sizes.map((value) => players.filter((p) => !p.spectator && p.vote === value));
   const counts = voters.map((group) => group.length);
   const max = Math.max(1, ...counts);
   return (
@@ -27,7 +28,7 @@ export function VoteBars({
       className={cn("estimate-bars", onPick && "is-picker")}
       aria-label={lang === "ru" ? "Распределение голосов" : "Vote distribution"}
     >
-      {scale.map((value, index) => {
+      {sizes.map((value, index) => {
         const names = voters[index].map((player) => player.name).join(", ");
         const label = `${cardFaceLabel(value)} · ${lang === "ru" ? "голосов" : "votes"}: ${counts[index]}${names ? ` · ${names}` : ""}`;
         const contents = (
@@ -86,7 +87,8 @@ export function RoundBar({
   children?: ReactNode;
 }) {
   const ru = lang === "ru";
-  const count = state.players.filter((p) => p.voted).length;
+  const voters = state.players.filter((p) => !p.spectator);
+  const count = voters.filter((p) => p.voted).length;
   return (
     <section
       className={cn("round-bar", state.revealed && "is-open")}
@@ -97,28 +99,38 @@ export function RoundBar({
           {state.revealed ? <Eye /> : <Swords />}
         </span>
         <div>
-          <h2>
-            {state.revealed
-              ? ru
-                ? "Карты открыты!"
-                : "Cards revealed!"
-              : ru
-                ? "Идёт голосование"
-                : "Voting in progress"}
+          <h2 className="round-heading">
+            <span className="round-step">
+              {ru ? "Шаг" : "Step"} {state.revealed ? "2/2" : "1/2"}
+            </span>
+            <span>
+              {state.revealed ? (
+                canManage ? (
+                  <>
+                    <span className="round-prompt-pulse">{ru ? "Нажмите" : "Click"}</span>
+                    {ru
+                      ? " на столбец, чтобы выбрать итоговую оценку"
+                      : " a bar to choose the final estimate"}
+                  </>
+                ) : ru ? (
+                  "Ведущий выбирает итоговую оценку"
+                ) : (
+                  "The host is choosing the final estimate"
+                )
+              ) : ru ? (
+                "Идёт голосование"
+              ) : (
+                "Voting in progress"
+              )}
+            </span>
           </h2>
-          <p>
-            {state.revealed
-              ? canManage
-                ? ru
-                  ? "Выберите и утвердите итоговую оценку"
-                  : "Choose and confirm the final estimate"
-                : ru
-                  ? "Команда обсуждает итоговую оценку"
-                  : "The party is discussing the estimate"
-              : ru
-                ? `${count} из ${state.players.length} карт на столе`
-                : `${count} of ${state.players.length} cards on the table`}
-          </p>
+          {!state.revealed && (
+            <p>
+              {ru
+                ? `${count} из ${voters.length} карт на столе`
+                : `${count} of ${voters.length} cards on the table`}
+            </p>
+          )}
         </div>
       </div>
       {state.revealed && showDistribution && canManage && onPick && (
@@ -168,7 +180,7 @@ export function RoundBar({
               <Eye />
               {ru ? "Открыть карты" : "Reveal cards"}
               <b className="round-count">
-                {count}/{state.players.length}
+                {count}/{voters.length}
               </b>
             </Button>
           )}

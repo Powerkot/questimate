@@ -1,3 +1,11 @@
+import {
+  CHARACTERS,
+  PLAYER_TITLES,
+  availableCharacters,
+  validAvatar,
+  validTitle,
+  type PlayerAppearance,
+} from "./player-profile.ts";
 import { initialDeckTheme, isDeckTheme, nextDeckTheme } from "./card-themes.ts";
 import {
   SCALE,
@@ -68,6 +76,31 @@ export function selectVariantId(
 }
 
 export function normalizeRoom(room: StoredRoom): StoredRoom {
+  const reserved = new Set(
+    room.players
+      .filter((p) => !p.kickedAt && !p.leftAt && !p.spectator && validAvatar(p.avatarId))
+      .map((p) => p.avatarId),
+  );
+  const used = new Set<string>();
+  for (const player of room.players) {
+    if (player.kickedAt || player.leftAt) continue;
+    if (player.spectator) {
+      player.avatarId = undefined;
+      player.titleId = null;
+      delete room.votes[player.id];
+      if (room.variants) delete room.variants[player.id];
+      continue;
+    }
+    if (!validAvatar(player.avatarId) || used.has(player.avatarId)) {
+      const offset = stableHash(player.id) % CHARACTERS.length;
+      player.avatarId = [...CHARACTERS.slice(offset), ...CHARACTERS.slice(0, offset)].find(
+        (c) => !used.has(c.id) && !reserved.has(c.id),
+      )?.id;
+    }
+    if (player.avatarId) used.add(player.avatarId);
+    if (player.titleId === undefined)
+      player.titleId = PLAYER_TITLES[stableHash(player.id) % PLAYER_TITLES.length].id;
+  }
   room.roundId ||= room.task?.id ?? makeId("r");
   if (!isDeckTheme(room.deckThemeId)) room.deckThemeId = initialDeckTheme(room.code);
   room.variants ||= {};
@@ -118,6 +151,9 @@ export function snapshot(room: StoredRoom, viewerId: string): Snapshot {
     players: activePlayers(room).map((p) => ({
       id: p.id,
       name: p.name,
+      spectator: Boolean(p.spectator),
+      avatarId: p.avatarId ?? "",
+      titleId: p.titleId ?? null,
       isHost: p.id === room.hostId,
       online: Boolean(p.bot) || t - p.lastSeen <= PRESENCE_AWAY_MS,
       voted: Boolean(room.votes[p.id]),
@@ -135,7 +171,7 @@ export function snapshot(room: StoredRoom, viewerId: string): Snapshot {
     deckVariants: Object.fromEntries(
       SCALE.map((value) => [value, selectVariantId(room, viewerId, value)]),
     ) as Record<CardValue, string>,
-    votesCount: Object.keys(room.votes).length,
+    votesCount: activePlayers(room).filter((p) => !p.spectator && room.votes[p.id]).length,
     scale: SCALE,
     // Snapshots must not expose the room's mutable array. The local demo applies
     // actions in place, so reusing this reference can hide a newly finalized
@@ -207,7 +243,13 @@ function requirePlayer(
 }
 
 export type RoomAction =
-  | { type: "join"; name: string; playerId: string; token: string; password?: string }
+  | ({
+      type: "join";
+      name: string;
+      playerId: string;
+      token: string;
+      password?: string;
+    } & PlayerAppearance)
   | { type: "resume"; playerId: string; token: string }
   | { type: "sync"; playerId: string; token: string }
   | { type: "chat"; playerId: string; token: string; text: string }
@@ -231,7 +273,7 @@ export type ApplyResult =
       persist?: boolean;
       hit?: { targetId: string };
     }
-  | { ok: false; error: "unauthorized" | "invalid" };
+  | { ok: false; error: "unauthorized" | "invalid" | "avatar_taken" | "no_characters" };
 
 export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
   normalizeRoom(room);
@@ -243,9 +285,29 @@ export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
     const existingById = room.players.find((p) => p.id === action.playerId);
     const existing = existingByToken ?? existingById;
     if (existing?.kickedAt) return { ok: false, error: "unauthorized" };
+    if (existing && existing.token !== action.token) return { ok: false, error: "unauthorized" };
+    if (
+      (action.avatarId !== undefined && !validAvatar(action.avatarId)) ||
+      !validTitle(action.titleId)
+    )
+      return { ok: false, error: "invalid" };
+    const spectator = action.spectator ?? existing?.spectator ?? false;
+    const available = availableCharacters(room.players, existing?.id);
+    const avatarId = spectator
+      ? undefined
+      : (action.avatarId ?? existing?.avatarId ?? available[0]);
+    if (!spectator && !avatarId) return { ok: false, error: "no_characters" };
+    if (!spectator && !available.includes(avatarId!)) return { ok: false, error: "avatar_taken" };
     if (existing) {
       if (existing.token !== action.token) return { ok: false, error: "unauthorized" };
       existing.name = name;
+      existing.avatarId = avatarId;
+      existing.spectator = spectator;
+      if (spectator) {
+        existing.titleId = null;
+        delete room.votes[existing.id];
+        delete room.variants[existing.id];
+      } else if (action.titleId !== undefined) existing.titleId = action.titleId;
       existing.lastSeen = now();
       if (!existing.joinedAt) existing.joinedAt = now();
       delete existing.leftAt;
@@ -253,6 +315,9 @@ export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
       return { ok: true, room, you: existing.id };
     }
     const player: StoredPlayer = {
+      avatarId,
+      spectator,
+      titleId: spectator ? null : (action.titleId ?? null),
       id: action.playerId,
       name,
       token: action.token,
@@ -337,6 +402,7 @@ export function applyAction(room: StoredRoom, action: RoomAction): ApplyResult {
   }
 
   if (action.type === "vote") {
+    if (me.spectator) return { ok: false, error: "unauthorized" };
     if (!room.task || room.revealed || !isCard(action.value))
       return { ok: false, error: "invalid" };
     room.votes[me.id] = action.value;

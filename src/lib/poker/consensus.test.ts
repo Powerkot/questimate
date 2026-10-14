@@ -5,6 +5,9 @@ import type { CardValue, PublicPlayer } from "./types.ts";
 
 function player(id: string, vote: CardValue, variantId: string | null = null): PublicPlayer {
   return {
+    avatarId: "portrait-01",
+    spectator: false,
+    titleId: null,
     id,
     name: id,
     isHost: id === "host",

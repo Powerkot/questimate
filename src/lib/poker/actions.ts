@@ -1,3 +1,4 @@
+import { validAvatar, validTitle } from "./player-profile";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import type { PokerResult } from "./types";
@@ -8,15 +9,31 @@ const code = z.string().regex(/^[A-Z0-9]{5}$/);
 const name = z.string().max(24);
 const password = z.string().min(4).max(128).optional();
 
+const avatarId = z.string().refine(validAvatar).optional();
+const titleId = z.string().nullable().refine(validTitle).optional();
+
 const createSchema = z.object({
   name,
+  avatarId,
+  titleId,
+  spectator: z.boolean().optional(),
   playerId: id,
   token,
   password,
 });
 
 const actionSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("join"), code, name, playerId: id, token, password }),
+  z.object({
+    type: z.literal("join"),
+    code,
+    name,
+    playerId: id,
+    token,
+    password,
+    avatarId,
+    titleId,
+    spectator: z.boolean().optional(),
+  }),
   z.object({ type: z.literal("resume"), code, playerId: id, token }),
   z.object({ type: z.literal("sync"), code, playerId: id, token }),
   z.object({ type: z.literal("chat"), code, playerId: id, token, text: z.string().max(400) }),
@@ -75,4 +92,11 @@ export const pokerActionFn = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<PokerResult> => {
     const { handlePokerAction } = await import("./store.server");
     return handlePokerAction(data);
+  });
+
+export const pokerCharactersFn = createServerFn({ method: "POST" })
+  .validator((data: unknown) => z.object({ code, playerId: id, token, password }).parse(data))
+  .handler(async ({ data }) => {
+    const { getPokerCharacters } = await import("./store.server");
+    return getPokerCharacters(data);
   });
