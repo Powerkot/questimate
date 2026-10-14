@@ -1,9 +1,17 @@
 // Individual 256px portraits supplied for the circular character picker.
-export const CHARACTERS = Array.from({ length: 16 }, (_, index) => ({
+const PEOPLE = Array.from({ length: 16 }, (_, index) => ({
   id: `portrait-${String(index + 1).padStart(2, "0")}`,
   art: `/avatars/characters-v2/avatar-${String(index + 1).padStart(2, "0")}.webp`,
   position: "center",
 }));
+export const CHARACTERS = [
+  ...PEOPLE,
+  ...["dragon", "zombie", "ghoul", "phoenix", "unicorn", "griffin", "minotaur", "treant"].map((name) => ({
+    id: `creature-${name}`,
+    art: `/avatars/creatures-v1/${name}.webp`,
+    position: "center",
+  })),
+];
 export const PLAYER_TITLES = [
   { id: "bugs", ru: "Укротитель багов", en: "Bug Tamer" },
   { id: "oracle", ru: "Оракул оценок", en: "Oracle of Estimates" },

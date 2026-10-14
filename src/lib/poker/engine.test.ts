@@ -745,7 +745,7 @@ it("admits observers even when every character portrait is taken", () => {
         playerId: `voter${String(i).padStart(3, "0")}`,
         token: `voter-token-${i}`,
         name: `Voter ${i}`,
-        avatarId: `portrait-${String(i).padStart(2, "0")}`,
+        avatarId: CHARACTERS[i - 1].id,
       }).ok,
       true,
     );
